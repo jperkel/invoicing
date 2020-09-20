@@ -1,4 +1,4 @@
-# Bash-based Invoicing system
+# Bash-based invoicing system
 
 This script creates and manages a comma-separated values (CSV)-based invoice spreadsheet. The sheet includes 7 columns: 
 - Invoice #
@@ -9,7 +9,7 @@ This script creates and manages a comma-separated values (CSV)-based invoice spr
 - Amount paid 
 - Taxes (eg: "PAID", or "Q2/20" or whatever you find useful)
 
-The file is located in `~/mysheet.csv`, but you can modify that on line 10. 
+By default the spreadsheet is located in `~/mysheet.csv`, but you can modify that on line 10. 
 
 The script supports the following commands: 
 - `add`: Add invoice
@@ -23,8 +23,10 @@ The script supports the following commands:
 - `report`: Show details for one client <client ID>
 - `taxes`: Mark taxes paid
 
+You invoke those commands by typing them after the script name in a command line terminal: `invoices [COMMAND] <optional-parameters>`. For example, `$ invoices edit 10` allows you to edit invoice 10. `$ invoices report CLIENT_A` summarizes your invoices from the client whose clientID is CLIENT_A. In these two examples, the invoice number and name of the client are optional; if you omit them, the script will prompt you instead -- only the command itself is required.)
+
 # Installation
-To use this script, install it in your home directory. You should be able to execute it with `./invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you should be able to invoke the script directly, eg: `invoices clients`.
+To use this script, install it (`invoices.sh`) in your home directory. From a command line terminal (eg Mac Terminal) you should be able to execute it with `./invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you should be able to invoke the script directly, eg: `invoices clients`.
 
 # License
 (from https://opensource.org/licenses/BSD-3-Clause) 
