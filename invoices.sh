@@ -4,15 +4,26 @@
 
 # variables
 csvfile=~/mysheet.csv
+fields="inv_no,inv_date,customer,amt_billed,paid_date,amt_paid,taxes"
 
-usage() {
-	echo -e "\n$0: Script to handle freelance invoices"
+# functions
+function usage() {
+	echo -e "INVOICES.SH: Script to handle freelance invoices"
     echo -e "USAGE: $0 [COMMAND] <params>"
-    echo -e "\tCOMMANDS: add, delete, due, edit, list, pay, report <client ID>"
+    echo -e "\tCOMMANDS:"
+    echo -e "\t\tadd\tAdd invoice"
+    echo -e "\t\tall\tList invoices"
+    echo -e "\t\tclients\tList clients"
+    echo -e "\t\tdelete\tDelete invoice <invoice #>"
+    echo -e "\t\tdue\tShow unpaid invoices"
+    echo -e "\t\tedit\tEdit invoice <invoice #>"
+    echo -e "\t\thelp\tDisplay help"
+    echo -e "\t\tpay\tPay invoice <invoice #>"
+    echo -e "\t\treport\tShow details for one client <client ID>"
+    echo -e "\t\ttaxes\tMark taxes paid"
 }
 
-case $1 in
-"add")
+function doAdd {
     next=$(( $(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1) + 1 ))
     today=$(date +%Y-%m-%d)
 
@@ -47,75 +58,215 @@ case $1 in
         exit 1
     fi
 
-    echo "Inv no: $inv_no"
+    echo "Inv. no.: $inv_no"
     echo "Date: $d"
-    echo "Amt: $amt"
+    echo "Amt.: $amt"
 
-    echo "$inv_no,$d,$client,$amt,NA,NA,NA,NA" >> $csvfile
+    echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
     cat $csvfile | column -tx -s ','
-    ;;
+}
 
-"delete")
-    # echo "delete command not implemented"
-    ;;
+function doAll {
+    cat $csvfile | column -tx -s ','
+}
 
-"due")
+function doClients {
+        echo "Listing clients:"
+    cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
+}
+
+function doDelete {
+        if [ "$#" -lt 1 ]; then
+        read -p "Invoice # : " inv_no 
+    else 
+        inv_no=$1
+    fi 
+
+    cat $csvfile | \
+        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
+        column -tx -s ','
+
+    read -p "Delete this invoice? [n]: " answer
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        cat $csvfile | \
+            awk -F, -v i="$inv_no" '{ if (NR==1 || $1 != i) print $0 }' > tmp && mv tmp $csvfile
+
+        cat $csvfile | column -tx -s ','
+        echo "Invoice deleted."
+    fi
+}
+
+function doDue {
     echo "Outstanding invoices:"
     cat $csvfile | \
-        cut -f1,2,3,4,5,6,8 -d, | \
         awk -F, -v OFS="," 'NR==1 { $8="past_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
         column -tx -s ','
 
     echo -e "\n\tSummary:"
     cat $csvfile | \
-        awk -F, '{ a[$3] += $4-$6; DUE+=$4-$6 } END { for (i in a) if (a[i] != 0) print "\t"i": $"a[i]; print "\n\tTotal due: $"DUE,"\n" }'
+        awk -F, '{ a[$3] += $4-$6; DUE+=$4-$6; } END { for (i in a) if (a[i] != 0) print "\t"i": $"a[i]; print "\n\tTotal due: $"DUE,"\n" }'
+}
 
-    ;;
+function doEdit {
+    if [ "$#" -lt 1 ]; then
+        read -p "Invoice # : " inv_no 
+    else 
+        inv_no=$1
+    fi 
 
-"edit")
-    echo "edit command not implemented"
-    ;;
+    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
 
-"list")
-    echo "Listing clients:"
-    cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
-    ;;
+    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
+        echo "Invalid invoice number."
+        exit 1
+    fi 
 
-"pay")
-    # echo "pay command not implemented"
-    read -p "Invoice #: " inv_no
-    read -p "Amount paid: " amt 
-    read -p "Date: " d 
+    if [[ "$inv_no" -gt "$max" ]]; then 
+        echo "Invoice number out of range."
+        exit 1
+    fi 
 
-    pd=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f6 -d,)
-    billed=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f4 -d,)
-    # echo $pd
+    cat $csvfile | \
+        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
+        column -tx -s ','
 
-    # see https://stackoverflow.com/questions/16529716/save-modifications-in-place-with-awk
-    if [[ "$pd" == "NA" || "$pd" -ne "$billed" ]]; then 
-        echo -e "Marking invoice paid.\n"
+    read -p "Edit this invoice? [n]: " answer
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        inv_dt=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f2 -d,)
+        client=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f3 -d,)
+        amt_due=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f4 -d,)
+        pd_dt=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f5 -d,)
+        amt_pd=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f6 -d,)
+        taxes=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f7 -d,)
+
+        read -p "Inv. date [$inv_dt]: " id
+        read -p "Client [$client]: " c
+        read -p "Amt. due [$amt_due]: " ad 
+        read -p "Paid date [$pd_dt]: " pd
+        read -p "Amt. paid [$amt_pd]: " ap 
+        read -p "Taxes [$taxes]: " t 
+
+        if [ "$id" != "" ]; then
+            inv_dt=$id
+        fi 
+
+        if [ "$c" != "" ]; then
+            client=$c
+        fi 
+
+        if [ "$ad" != "" ]; then
+            amt_due=$ad
+        fi 
+
+        if [ "$pd" != "" ]; then
+            pd_dt=$pd
+        fi 
+
+        if [ "$ap" != "" ]; then
+            amt_pd=$ap
+        fi 
+
+        if [ "$t" != "" ]; then
+            taxes=$t
+        fi 
+
+
+        if [[ ! "$amt_due" =~ ^[0-9.]+$ ]]; then 
+            echo "Invalid amount due."
+            exit 1
+        fi 
+
+        if [[ ! "$amt_pd" =~ ^[0-9.]+$ && "$amt_pd" != "NA" ]]; then 
+            echo "Invalid amount paid."
+            exit 1
+        fi 
+
+        if [[ ! "$inv_dt" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then 
+            echo "Invalid invoice date."
+            exit 1
+        fi
+
+        if [[ ! "$pd_dt" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ && "$pd_dt" != "NA" ]]; then 
+            echo "Invalid paid date."
+            exit 1
+        fi
+
+        s=$(echo "$inv_no,$inv_dt,$client,$amt_due,$pd_dt,$amt_pd,$taxes")
         cat $csvfile | \
-            awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1==i) { $6=a; $5=d } print $0 }' > tmp && mv tmp $csvfile
+            awk -F, -v i="$inv_no" -v s="$s" '{ if ($1 == i) print s; else print $0 }' > tmp && mv tmp $csvfile
+
         cat $csvfile | \
             awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
             column -tx -s ','
 
+    fi
+}
+
+function doPay {
+    if [ "$#" -lt 1 ]; then
+        read -p "Invoice # : " inv_no 
     else 
-        echo "Invoice already paid."
+        inv_no=$1
     fi 
 
-    # cp $csvfile $csvfile".bak" 
-#    cat $csvfile | \
-#        awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1 == i) $6=a; $5=d; print $0 }' # > $csvfile 
-    
-#    cat $csvfile | column -tx -s ','
-    ;;
+    cat $csvfile | \
+        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
+        column -tx -s ','
 
-"report")
-    if [ "$#" -ne 2 ]; then
+    read -p "Mark this invoice paid? [n]: " answer
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        today=$(date +%Y-%m-%d)
+        pd=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f6 -d,)
+        due=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f4 -d,)
+
+        # see https://stackoverflow.com/questions/16529716/save-modifications-in-place-with-awk
+        if [[ "$pd" == "NA" || "$pd" -ne "$due" ]]; then 
+            read -p "Amount paid [$due]: " amt 
+            read -p "Date [$today]: " d 
+
+            if [[ $amt == "" ]]; then
+                amt=$due
+            fi 
+
+            if [[ $d == "" ]]; then
+                d=$today 
+            fi 
+
+            if [[ ! "$amt" =~ ^[0-9.]+$ ]]; then 
+                echo "Invalid payment amount."
+                exit 1
+            fi 
+
+            if [[ ! "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then 
+                echo "Invalid payment date."
+                exit 1
+            fi
+
+            cat $csvfile | \
+                awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1==i) { $6=a; $5=d } print $0 }' > tmp && mv tmp $csvfile
+            cat $csvfile | \
+                awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
+                column -tx -s ','
+
+            echo -e "Invoice paid.\n"
+
+        else 
+            echo "Invoice already paid."
+        fi
+    fi 
+}
+
+function doReport {
+    if [ "$#" -lt 1 ]; then
         read -p "Client: " client 
     else 
-        client=$2
+        client=$1
+    fi 
+
+    match=$(cat ~/mysheet.csv | sed "1d" | cut -f3 -d, | sort | uniq | grep $client)
+    if [ -z $match ]; then 
+        echo "No records found for client: $client."
+        exit 1
     fi 
 
     echo -e "\nClient: $client"
@@ -130,35 +281,100 @@ case $1 in
             }'
     echo "Invoices:"
     cat $csvfile | \
-        cut -f1,2,3,4,5,6,8 -d, | \
-        # awk -F, -v OFS="," '{
-        #     #split($2,a,"-");
-        #     #split($5,b,"-");
-        #     inv_dt = mktime(sprintf("%d %d %d 0 0 0 0", a[3],a[2],a[1]));
-        #     pd_dt = mktime(sprintf("%d %d %d 0 0 0 0", b[3],b[2],b[1]));
-        #     $9 = (inv_dt - pd_dt)/86400;
-        #     print $0
-        #  }' | \
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
-        awk -F, -v OFS="," 'NR==1 { $9="past_due"; print $0 } 
+        awk -F, -v OFS="," 'NR==1 { $8="past_due"; print $0 } 
                             NR>1 { if ($6 != $4) print $0,$4-$6; else print $0 }' | \
         column -tx -s ','
+}
+
+function doTaxes {
+    cat $csvfile | \
+        awk -F, '{ if (($7 == "NA" && $6 != "NA") || NR==1) print $0 }' | \
+        column -tx -s ','
+
+    taxable=$(cat $csvfile | awk -F, '$7 == "NA" && $6 != "NA" { INC += $6; } END { print "Untaxed income: " INC }')
+    echo -e "\n$taxable"
+
+    read -p "Mark taxes paid for these invoices? [n]: " answer
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        read -p "Value for taxes field: " taxes
+
+        cat $csvfile | \
+            awk -F, -v OFS="," -v t="$taxes" '{ if ($7=="NA") { $7=t } print $0 }' > tmp && mv tmp $csvfile
+        cat $csvfile | column -tx -s ','
+        echo -e "Record updated.\n"
+    fi     
+}
+
+function main {
+    if [ ! -e $csvfile ]; then 
+        read -p "Invoice database not found. Would you like to create one? [y]: " answer 
+        if [[ "$answer" == "" ]]; then 
+            answer="y"
+        fi
+
+        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+            echo $fields > $csvfile 
+        fi 
+
+        echo "File $csvfile created."
+    fi
+
+    if [ "$#" -lt 1 ]; then
+        echo "Error: Command required."
+        usage
+        exit 1
+    fi 
+
+    command=$1
+    shift 
+
+    case $command in
+    "add")
+        doAdd
     ;;
 
-*)
-    echo "Error: command not recognized"
-    usage
-    ;;
-esac
+    "all")
+        doAll
+        ;;
 
-#if [[ -n "$1" && -n "$2" ]]; then # if both $1 and $2 exist...
-#	grep -E "^["$1"]+$" /usr/share/dict/words | \
-#		grep ["$2"] | \
-#		awk '{ print length(), $0 }' | \
-#		sort -rn |  \
-#		awk '{ if (length($0) > 5) { print } }'
+    "clients")
+        doClients
+        ;;
 
-#else
-#	usage
-#fi
+    "delete")
+        doDelete $1
+        ;;
 
+    "due")
+        doDue 
+        ;;
+
+    "edit")
+        doEdit $1
+        ;;
+
+    "help")
+        usage 
+        ;;
+
+    "pay")
+        doPay $1
+        ;;
+
+    "report")
+        doReport $1 
+        ;;
+
+    "taxes")
+        doTaxes
+        ;;
+
+    *)
+        echo "Error: command not recognized"
+        usage
+        ;;
+    esac
+}
+
+main $1 $2
