@@ -1,6 +1,10 @@
 #! /bin/bash
-
 # Script to handle freelance invoices
+# (c) 2020 Jeffrey M. Perkel
+#
+# This script creates (if it does not exist) and manipulates a comma-separated values (CSV)-based list of invoices
+#
+
 
 # variables
 csvfile=~/mysheet.csv
@@ -9,7 +13,7 @@ fields="inv_no,inv_date,customer,amt_billed,paid_date,amt_paid,taxes"
 # functions
 function usage() {
 	echo -e "INVOICES.SH: Script to handle freelance invoices"
-    echo -e "USAGE: $0 [COMMAND] <params>"
+    echo -e "USAGE: $0 [COMMAND] <optional-params>"
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
     echo -e "\t\tall\tList invoices"
@@ -24,6 +28,7 @@ function usage() {
 }
 
 function doAdd {
+    # next invoice number
     next=$(( $(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1) + 1 ))
     today=$(date +%Y-%m-%d)
 
@@ -58,12 +63,10 @@ function doAdd {
         exit 1
     fi
 
-    echo "Inv. no.: $inv_no"
-    echo "Date: $d"
-    echo "Amt.: $amt"
-
     echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
-    cat $csvfile | column -tx -s ','
+    cat $csvfile | \
+        awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s ','
+    echo "Record successfully added."
 }
 
 function doAll {
@@ -76,10 +79,23 @@ function doClients {
 }
 
 function doDelete {
-        if [ "$#" -lt 1 ]; then
+    if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
     else 
         inv_no=$1
+    fi 
+
+    local answer
+    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
+
+    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
+        echo "Invalid invoice number."
+        exit 1
+    fi 
+
+    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
+        echo "Invoice number out of range."
+        exit 1
     fi 
 
     cat $csvfile | \
@@ -114,6 +130,7 @@ function doEdit {
         inv_no=$1
     fi 
 
+    local answer
     max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
 
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
@@ -121,7 +138,7 @@ function doEdit {
         exit 1
     fi 
 
-    if [[ "$inv_no" -gt "$max" ]]; then 
+    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
         echo "Invoice number out of range."
         exit 1
     fi 
@@ -195,10 +212,12 @@ function doEdit {
         cat $csvfile | \
             awk -F, -v i="$inv_no" -v s="$s" '{ if ($1 == i) print s; else print $0 }' > tmp && mv tmp $csvfile
 
+        echo -e "\n"
         cat $csvfile | \
             awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
             column -tx -s ','
 
+        echo -e "\nRecord updated."
     fi
 }
 
@@ -207,6 +226,19 @@ function doPay {
         read -p "Invoice # : " inv_no 
     else 
         inv_no=$1
+    fi 
+
+    local answer
+    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
+
+    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
+        echo "Invalid invoice number."
+        exit 1
+    fi 
+
+    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
+        echo "Invoice number out of range."
+        exit 1
     fi 
 
     cat $csvfile | \
@@ -295,6 +327,7 @@ function doTaxes {
     taxable=$(cat $csvfile | awk -F, '$7 == "NA" && $6 != "NA" { INC += $6; } END { print "Untaxed income: " INC }')
     echo -e "\n$taxable"
 
+    local answer 
     read -p "Mark taxes paid for these invoices? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
         read -p "Value for taxes field: " taxes
@@ -308,6 +341,7 @@ function doTaxes {
 
 function main {
     if [ ! -e $csvfile ]; then 
+        local answer 
         read -p "Invoice database not found. Would you like to create one? [y]: " answer 
         if [[ "$answer" == "" ]]; then 
             answer="y"
@@ -315,9 +349,12 @@ function main {
 
         if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
             echo $fields > $csvfile 
-        fi 
+            echo "File $csvfile created."
 
-        echo "File $csvfile created."
+        else 
+            echo "No invoice database found."
+            exit 1
+        fi 
     fi
 
     if [ "$#" -lt 1 ]; then
@@ -331,15 +368,15 @@ function main {
 
     case $command in
     "add")
-        doAdd
+        doAdd $1
     ;;
 
     "all")
-        doAll
+        doAll $1
         ;;
 
     "clients")
-        doClients
+        doClients $1
         ;;
 
     "delete")
@@ -347,7 +384,7 @@ function main {
         ;;
 
     "due")
-        doDue 
+        doDue $1
         ;;
 
     "edit")
@@ -367,7 +404,7 @@ function main {
         ;;
 
     "taxes")
-        doTaxes
+        doTaxes $1
         ;;
 
     *)
