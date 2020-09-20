@@ -1,4 +1,5 @@
-# invoicing
+# Bash-based Invoicing system
+
 This script creates and manages a comma-separated values (CSV)-based invoice spreadsheet. The sheet includes 7 columns: 
 - Invoice #
 - Invoice date
