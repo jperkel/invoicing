@@ -3,7 +3,7 @@
 This script creates and manages a comma-separated values (CSV)-based invoice spreadsheet. The sheet includes 7 columns: 
 - Invoice #
 - Invoice date
-- CustomerID
+- CustomerID (no spaces, eg CLIENT_A or CUSTOMER_1)
 - Amount billed
 - Date paid 
 - Amount paid 
@@ -23,4 +23,5 @@ The script supports the following commands:
 - `report`: Show details for one client <client ID>
 - `taxes`: Mark taxes paid
 
+# Installation
 To use this script, install it in your home directory. You should be able to execute it with `./invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you should be able to invoke the script directly, eg: `invoices clients`.
