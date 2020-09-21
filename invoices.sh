@@ -24,6 +24,7 @@ function usage() {
     echo -e "\t\tpay\tPay invoice <optional: invoice #>"
     echo -e "\t\treport\tDisplay summary for one client <optional: client_ID>"
     echo -e "\t\tshow\tDisplay single invoice <optional: invoice #>"
+    echo -e "\t\tsummary\tShow summary of all clients"
     echo -e "\t\ttaxes\tMark taxes paid"
     echo -e "\t\tunpaid\tList unpaid invoices"
 
@@ -60,7 +61,7 @@ function doAdd {
         exit 1
     fi 
 
-    match=$(cat ~/mysheet.csv | sed "1d" | cut -f1 -d, | sort -n | grep $inv_no)
+    match=$(cat ~/mysheet.csv | sed "1d" | cut -f1 -d, | grep $inv_no)
     if [ ! -z $match ]; then 
         echo "Invoice number in use: $inv_no."
         exit 1
@@ -106,7 +107,7 @@ function doAdd {
 }
 
 function doClients {
-        echo "Listing clients:"
+    echo "Listing clients:"
     cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
 }
 
@@ -300,14 +301,14 @@ function doReport {
         exit 1
     fi 
 
-    echo -e "\nClient: $client"
+    echo -e "\nClient:\t\t$client"
     cat $csvfile | \
         awk -F, -v client="$client" '$3==client { COUNT++; BILLED += $4; PAID += $6; DUE += $4-$6 } END \
             { if (COUNT == 0) print "No invoices found.\n" 
-            else print "No. invoices:\t",COUNT, \
-                "\nTotal billed:\t",BILLED,
-                "\nTotal paid:\t",PAID,
-                "\nAmount due:\t",DUE,
+            else print "No. invoices:\t"COUNT,
+                "\nTotal billed:\t"BILLED,
+                "\nTotal paid:\t"PAID,
+                "\nAmount due:\t"DUE,
                 "\n" 
             }'
     echo "Invoices:"
@@ -331,6 +332,21 @@ function doShow {
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
         column -tx -s ','
+}
+
+function doSummary {
+    echo "Client summary:"
+    # for each client, tally # of invoices, amt billed, amt paid, balance due; write the data out as a CSV
+    data=$(cat $csvfile | sed "1d" | \
+            awk -F, '{ count[$3]++; billed[$3] += $4; paid[$3] += $6; unpaid[$3] += $4-$6; } END \
+            { for (c in count) print c","count[c]","billed[c]","paid[c]","unpaid[c] }')
+    headings=$(echo "customer,invoices,billed,paid,unpaid")
+    # add headings to the data and format
+    printf "%s\n%s\n" $headings $data | column -tx -s ','
+
+    # count total # of invoices, total amount billed, paid and unpaid
+    echo "$(printf "%s\n" $data | awk -F, '{count += $2; sum += $3; paid += $4; unpaid += $5 } END \
+    {print "\n\tNum. invoices:\t"count"\n\tTotal billed:\t$"sum"\n\tTotal paid:\t$"paid"\n\tBalance due:\t$"unpaid"\n" }')"
 }
 
 function doTaxes {
@@ -426,6 +442,10 @@ function main {
 
     "show")
         doShow $1
+        ;;
+
+    "summary")
+        doSummary $1
         ;;
 
     "taxes")

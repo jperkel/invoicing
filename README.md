@@ -20,7 +20,8 @@ The script supports the following commands:
 - `list`: List all invoices
 - `pay`: Pay invoice <invoice #>
 - `report`: Show details for one client <client ID>
-- `show`: Display single invoice <invoice #>
+- `show`: Show single invoice <invoice #>
+- `summary`: Show summary of all clients
 - `taxes`: Mark taxes paid
 - `unpaid`: List unpaid invoices
 
