@@ -13,20 +13,21 @@ By default the spreadsheet is located in `~/mysheet.csv`, but you can modify tha
 
 The script supports the following commands: 
 - `add`: Add invoice
-- `all`: List invoices
 - `clients`: List clients
 - `delete`: Delete invoice <invoice #>
-- `due`: List unpaid invoices
 - `edit`: Edit invoice <invoice #>
 - `help`: Display help
+- `list`: List all invoices
 - `pay`: Pay invoice <invoice #>
 - `report`: Show details for one client <client ID>
+- `show`: Display single invoice <invoice #>
 - `taxes`: Mark taxes paid
+- `unpaid`: List unpaid invoices
 
-You invoke those commands by typing them after the script name in a command line terminal: `invoices [COMMAND] <optional-parameters>`. For example, `$ invoices edit 10` allows you to edit invoice 10. `$ invoices report CLIENT_A` summarizes your invoices from the client whose clientID is CLIENT_A. In these two examples, the invoice number and name of the client are optional; if you omit them, the script will prompt you instead -- only the command itself is required.)
+Invoke those commands by entering them after the script name in a command line terminal: `invoices [COMMAND] <optional-parameters>`. For example, `$ invoices edit 10` allows you to edit invoice 10. `$ invoices report CLIENT_A` summarizes your invoices from the client whose clientID is CLIENT_A. In these two examples, the invoice number and name of the client are optional; if you omit them, the script will prompt you instead -- only the command itself is required.)
 
 # Installation
-To use this script, install it (`invoices.sh`) in your home directory. From a command line terminal (eg Mac Terminal) you should be able to execute it with `./invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you should be able to invoke the script directly, eg: `invoices clients`.
+Install the script (`invoices.sh`) somewhere in your home directory. From a command line terminal (eg Mac Terminal) you should be able to execute it with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.
 
 # License
 (from https://opensource.org/licenses/BSD-3-Clause) 

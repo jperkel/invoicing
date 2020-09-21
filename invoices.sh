@@ -16,15 +16,17 @@ function usage() {
     echo -e "USAGE: $0 [COMMAND] <optional-params>"
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
-    echo -e "\t\tall\tList all invoices"
     echo -e "\t\tclients\tList clients"
-    echo -e "\t\tdelete\tDelete invoice <invoice #>"
-    echo -e "\t\tdue\tList unpaid invoices"
-    echo -e "\t\tedit\tEdit invoice <invoice #>"
+    echo -e "\t\tdelete\tDelete invoice <optional: invoice #>"
+    echo -e "\t\tedit\tEdit invoice <optional: invoice #>"
     echo -e "\t\thelp\tDisplay help"
-    echo -e "\t\tpay\tPay invoice <invoice #>"
-    echo -e "\t\treport\tDisplay summary for one client <client ID>"
+    echo -e "\t\tlist\tList all invoices"
+    echo -e "\t\tpay\tPay invoice <optional: invoice #>"
+    echo -e "\t\treport\tDisplay summary for one client <optional: client_ID>"
+    echo -e "\t\tshow\tDisplay single invoice <optional: invoice #>"
     echo -e "\t\ttaxes\tMark taxes paid"
+    echo -e "\t\tunpaid\tList unpaid invoices"
+
 }
 
 function doAdd {
@@ -69,10 +71,6 @@ function doAdd {
     echo "Record successfully added."
 }
 
-function doAll {
-    cat $csvfile | column -tx -s ','
-}
-
 function doClients {
         echo "Listing clients:"
     cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
@@ -110,17 +108,6 @@ function doDelete {
         cat $csvfile | column -tx -s ','
         echo "Invoice deleted."
     fi
-}
-
-function doDue {
-    echo "Outstanding invoices:"
-    cat $csvfile | \
-        awk -F, -v OFS="," 'NR==1 { $8="past_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
-        column -tx -s ','
-
-    echo -e "\n\tSummary:"
-    cat $csvfile | \
-        awk -F, '{ a[$3] += $4-$6; DUE+=$4-$6; } END { for (i in a) if (a[i] != 0) print "\t"i": $"a[i]; print "\n\tTotal due: $"DUE,"\n" }'
 }
 
 function doEdit {
@@ -221,6 +208,10 @@ function doEdit {
     fi
 }
 
+function doList {
+    cat $csvfile | column -tx -s ','
+}
+
 function doPay {
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
@@ -308,7 +299,7 @@ function doReport {
             else print "No. invoices:\t",COUNT, \
                 "\nTotal billed:\t",BILLED,
                 "\nTotal paid:\t",PAID,
-                "\nTotal due:\t",DUE,
+                "\nAmount due:\t",DUE,
                 "\n" 
             }'
     echo "Invoices:"
@@ -316,6 +307,31 @@ function doReport {
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
         awk -F, -v OFS="," 'NR==1 { $8="past_due"; print $0 } 
                             NR>1 { if ($6 != $4) print $0,$4-$6; else print $0 }' | \
+        column -tx -s ','
+}
+
+function doShow {
+    if [ "$#" -lt 1 ]; then
+        read -p "Invoice # : " inv_no 
+    else 
+        inv_no=$1
+    fi 
+
+    local answer
+    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
+
+    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
+        echo "Invalid invoice number."
+        exit 1
+    fi 
+
+    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
+        echo "Invoice number out of range."
+        exit 1
+    fi 
+
+    cat $csvfile | \
+        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
         column -tx -s ','
 }
 
@@ -337,6 +353,17 @@ function doTaxes {
         cat $csvfile | column -tx -s ','
         echo -e "Record updated.\n"
     fi     
+}
+
+function doUnpaid {
+    echo "Outstanding invoices:"
+    cat $csvfile | \
+        awk -F, -v OFS="," 'NR==1 { $8="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
+        column -tx -s ','
+
+    echo -e "\n\tUnpaid summary:"
+    cat $csvfile | \
+        awk -F, '{ a[$3] += $4-$6; DUE+=$4-$6; } END { for (i in a) if (a[i] != 0) print "\t"i": $"a[i]; print "\n\tTotal due: $"DUE,"\n" }'
 }
 
 function main {
@@ -371,20 +398,12 @@ function main {
         doAdd $1
     ;;
 
-    "all")
-        doAll $1
-        ;;
-
     "clients")
         doClients $1
         ;;
 
     "delete")
         doDelete $1
-        ;;
-
-    "due")
-        doDue $1
         ;;
 
     "edit")
@@ -395,6 +414,10 @@ function main {
         usage 
         ;;
 
+    "list")
+        doList $1
+        ;;
+
     "pay")
         doPay $1
         ;;
@@ -403,8 +426,16 @@ function main {
         doReport $1 
         ;;
 
+    "show")
+        doShow $1
+        ;;
+
     "taxes")
         doTaxes $1
+        ;;
+
+    "unpaid")
+        doUnpaid $1
         ;;
 
     *)
