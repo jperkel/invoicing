@@ -3,7 +3,7 @@
 This script creates and manages a comma-separated values (CSV)-based invoice spreadsheet. The sheet includes 7 columns: 
 - Invoice #
 - Invoice date
-- CustomerID (no spaces, eg CLIENT_A or CUSTOMER_1)
+- ClientID (no spaces, eg CLIENT_A or CUSTOMER_1)
 - Amount billed
 - Date paid 
 - Amount paid 
@@ -13,7 +13,7 @@ By default the spreadsheet is located in `~/mysheet.csv`, but you can modify tha
 
 The script supports the following commands: 
 - `add`: Add invoice
-- `clients`: List clients
+- `clients`: List client IDs
 - `delete`: Delete invoice <invoice #>
 - `edit`: Edit invoice <invoice #>
 - `help`: Display help
@@ -32,23 +32,24 @@ Here is the result of `invoices unpaid` on the example database included in this
 ```
 $ invoices unpaid
 Outstanding invoices:
-inv_no  inv_date    customer  amt_billed  paid_date  amt_paid  taxes_pd  bal_due
-43      2015-04-01  CLIENT_C  1200        NA         NA        NA        1200
-46      2020-09-20  CLIENT_N  1000        NA         NA        NA        1000
-47      2020-09-20  CLIENT_O  900         NA         NA        NA        900
-48      2020-09-20  CLIENT_P  1200        NA         NA        NA        1200
-49      2020-09-20  CLIENT_P  2700        NA         NA        NA        2700
-50      2020-09-20  CLIENT_M  250         NA         NA        NA        250
-51      2020-09-20  CLIENT_P  500         NA         NA        NA        500
+inv_no  inv_date    clientID  amt_billed  paid_date  amt_paid  taxes_pd  days_past_due
+43      2017-04-01  CLIENT_C  1200        NA         NA        NA        1269
+46      2020-09-20  CLIENT_N  1000        NA         NA        NA        1
+47      2020-09-20  CLIENT_O  900         NA         NA        NA        1
+48      2020-09-20  CLIENT_P  1200        NA         NA        NA        1
+49      2020-09-20  CLIENT_P  2700        NA         NA        NA        1
+50      2020-09-20  CLIENT_M  250         NA         NA        NA        1
+51      2020-09-20  CLIENT_P  500         NA         NA        NA        1
+52      2020-09-21  CLIENT_O  300         NA         NA        NA        0
 
 	Unpaid summary:
 	CLIENT_C: $1200
 	CLIENT_M: $250
 	CLIENT_N: $1000
-	CLIENT_O: $900
+	CLIENT_O: $1200
 	CLIENT_P: $4400
 
-	Total due: $7750
+	Total due: $8050
 ```
 
 And this is the result of `invoices report CLIENT_M`: 
@@ -71,7 +72,9 @@ inv_no  inv_date    customer  amt_billed  paid_date   amt_paid  taxes_pd  past_d
 ```
 
 # Installation
-Install the script (`invoices.sh`) somewhere in your home directory. From a command line terminal (eg Mac Terminal) you should be able to execute it with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.
+1. Install the script (`invoices.sh`) somewhere in your home directory. 
+2. Make the script executable with `chmod +x invoices.sh`.
+3. From a command line terminal (eg Mac Terminal) you should be able to execute it with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.
 
 # License
 (from https://opensource.org/licenses/BSD-3-Clause) 

@@ -8,7 +8,7 @@
 
 # variables
 csvfile=~/mysheet.csv
-fields="inv_no,inv_date,customer,amt_billed,paid_date,amt_paid,taxes"
+fields="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
 
 # functions
 function usage() {
@@ -340,7 +340,7 @@ function doSummary {
     data=$(cat $csvfile | sed "1d" | \
             awk -F, '{ count[$3]++; billed[$3] += $4; paid[$3] += $6; unpaid[$3] += $4-$6; } END \
             { for (c in count) print c","count[c]","billed[c]","paid[c]","unpaid[c] }')
-    headings=$(echo "customer,invoices,billed,paid,unpaid")
+    headings=$(echo "clientID,invoices,billed,paid,unpaid")
     # add headings to the data and format
     printf "%s\n%s\n" $headings $data | column -tx -s ','
 
@@ -371,12 +371,14 @@ function doTaxes {
 
 function doUnpaid {
     echo "Outstanding invoices:"
+    # this version of the code shows the outstanding balance
 #    cat $csvfile | \
 #        awk -F, -v OFS="," 'NR==1 { $(NF+1)="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
 #        column -tx -s ','
 
+    # this version of the code calculates the number of days an invoice is past-due.
     cat $csvfile | \
-        awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days"; print $0; } NR>1 { if ($6 != $4) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,(today-inv_dt)/86400 } }' | \
+        awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days_past_due"; print $0; } NR>1 { if (($6 < $4) || ($6 == "NA")) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,(today-inv_dt)/86400 } }' | \
         column -tx -s ','
 
     echo -e "\n\tUnpaid summary:"
