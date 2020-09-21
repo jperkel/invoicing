@@ -16,13 +16,13 @@ function usage() {
     echo -e "USAGE: $0 [COMMAND] <optional-params>"
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
-    echo -e "\t\tclients\tList clients"
+    echo -e "\t\tclients\tList clientIDs"
     echo -e "\t\tdelete\tDelete invoice <optional: invoice #>"
     echo -e "\t\tedit\tEdit invoice <optional: invoice #>"
     echo -e "\t\thelp\tDisplay help"
     echo -e "\t\tlist\tList all invoices"
     echo -e "\t\tpay\tPay invoice <optional: invoice #>"
-    echo -e "\t\treport\tDisplay summary for one client <optional: client_ID>"
+    echo -e "\t\treport\tDisplay summary for one client <optional: clientID>"
     echo -e "\t\tshow\tDisplay single invoice <optional: invoice #>"
     echo -e "\t\tsummary\tShow summary of all clients"
     echo -e "\t\ttaxes\tMark taxes paid"
@@ -77,7 +77,7 @@ function doAdd {
         exit 1
     fi
 
-    read -p "Client: " client 
+    read -p "ClientID: " client 
 
     while [[ $amt == "" ]]; do 
         read -p "Amount due: " amt 
@@ -107,7 +107,7 @@ function doAdd {
 }
 
 function doClients {
-    echo "Listing clients:"
+    echo "Listing clientIDs:"
     cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
 }
 
@@ -161,7 +161,7 @@ function doEdit {
         taxes=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f7 -d,)
 
         read -p "Inv. date [$inv_dt]: " id
-        read -p "Client [$client]: " c
+        read -p "ClientID [$client]: " c
         read -p "Amt. due [$amt_due]: " ad 
         read -p "Paid date [$pd_dt]: " pd
         read -p "Amt. paid [$amt_pd]: " ap 
@@ -290,7 +290,7 @@ function doPay {
 # input: $1 (optional): clientID
 function doReport {
     if [ "$#" -lt 1 ]; then
-        read -p "Client: " client 
+        read -p "ClientID: " client 
     else 
         client=$1
     fi 
@@ -301,7 +301,7 @@ function doReport {
         exit 1
     fi 
 
-    echo -e "\nClient:\t\t$client"
+    echo -e "\nClientID:\t\t$client"
     cat $csvfile | \
         awk -F, -v client="$client" '$3==client { COUNT++; BILLED += $4; PAID += $6; DUE += $4-$6 } END \
             { if (COUNT == 0) print "No invoices found.\n" 

@@ -13,13 +13,13 @@ By default the spreadsheet is located in `~/mysheet.csv`, but you can modify tha
 
 The script supports the following commands: 
 - `add`: Add invoice
-- `clients`: List client IDs
+- `clients`: List clientIDs
 - `delete`: Delete invoice <invoice #>
 - `edit`: Edit invoice <invoice #>
 - `help`: Display help
 - `list`: List all invoices
 - `pay`: Pay invoice <invoice #>
-- `report`: Show details for one client <client ID>
+- `report`: Show details for one client <clientID>
 - `show`: Show single invoice <invoice #>
 - `summary`: Show summary of all clients
 - `taxes`: Mark taxes paid
@@ -57,14 +57,14 @@ And this is the result of `invoices report CLIENT_M`:
 ```
 $ invoices report CLIENT_M
 
-Client:		CLIENT_M
+ClientID:		CLIENT_M
 No. invoices:	4
 Total billed:	3450
 Total paid:	3200
 Amount due:	250
 
 Invoices:
-inv_no  inv_date    customer  amt_billed  paid_date   amt_paid  taxes_pd  past_due
+inv_no  inv_date    clientID  amt_billed  paid_date   amt_paid  taxes_pd  past_due
 35      2008-11-15  CLIENT_M  600         2009-03-01  600       Q2/09
 38      2009-01-20  CLIENT_M  600         2009-03-15  600       Q2/09
 45      2020-09-19  CLIENT_M  2000        2020-09-20  2000      NA
