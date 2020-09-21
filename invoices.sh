@@ -16,14 +16,14 @@ function usage() {
     echo -e "USAGE: $0 [COMMAND] <optional-params>"
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
-    echo -e "\t\tall\tList invoices"
+    echo -e "\t\tall\tList all invoices"
     echo -e "\t\tclients\tList clients"
     echo -e "\t\tdelete\tDelete invoice <invoice #>"
-    echo -e "\t\tdue\tShow unpaid invoices"
+    echo -e "\t\tdue\tList unpaid invoices"
     echo -e "\t\tedit\tEdit invoice <invoice #>"
     echo -e "\t\thelp\tDisplay help"
     echo -e "\t\tpay\tPay invoice <invoice #>"
-    echo -e "\t\treport\tShow details for one client <client ID>"
+    echo -e "\t\treport\tDisplay summary for one client <client ID>"
     echo -e "\t\ttaxes\tMark taxes paid"
 }
 
