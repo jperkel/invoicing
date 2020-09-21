@@ -314,7 +314,7 @@ function doReport {
     echo "Invoices:"
     cat $csvfile | \
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
-        awk -F, -v OFS="," 'NR==1 { $8="past_due"; print $0 } 
+        awk -F, -v OFS="," 'NR==1 { $(NF+1)="past_due"; print $0 } 
                             NR>1 { if ($6 != $4) print $0,$4-$6; else print $0 }' | \
         column -tx -s ','
 }
@@ -371,8 +371,12 @@ function doTaxes {
 
 function doUnpaid {
     echo "Outstanding invoices:"
+#    cat $csvfile | \
+#        awk -F, -v OFS="," 'NR==1 { $(NF+1)="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
+#        column -tx -s ','
+
     cat $csvfile | \
-        awk -F, -v OFS="," 'NR==1 { $8="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
+        awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days"; print $0; } NR>1 { if ($6 != $4) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,(today-inv_dt)/86400 } }' | \
         column -tx -s ','
 
     echo -e "\n\tUnpaid summary:"
