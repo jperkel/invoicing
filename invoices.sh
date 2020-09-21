@@ -29,25 +29,30 @@ function usage() {
 
 }
 
+# confirm invoice number is valid
+# input: $1: an invoice number
+function validateInvNo {
+    local inv_no=$1
+    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
+        echo "Invalid invoice number."
+        exit 1
+    fi 
+
+    match=$(cat ~/mysheet.csv | sed "1d" | cut -f1 -d, | sort -n | grep $inv_no)
+    if [ -z $match ]; then 
+        echo "Invoice not found: $inv_no."
+        exit 1
+    fi
+}
+
 function doAdd {
     # next invoice number
     next=$(( $(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1) + 1 ))
     today=$(date +%Y-%m-%d)
 
     read -p "Invoice # [$next]: " inv_no
-    read -p "Date [$today]: " d 
-    read -p "Client: " client 
-
-    while [[ $amt == "" ]]; do 
-        read -p "Amount due: " amt 
-    done 
-
     if [ "$inv_no" == "" ]; then 
         inv_no=$next
-    fi
-
-    if [ "$d" == "" ]; then 
-        d=$today
     fi
 
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
@@ -55,20 +60,49 @@ function doAdd {
         exit 1
     fi 
 
-    if [[ ! "$amt" =~ ^[0-9.]+$ ]]; then 
-        echo "Invalid amount."
+    match=$(cat ~/mysheet.csv | sed "1d" | cut -f1 -d, | sort -n | grep $inv_no)
+    if [ ! -z $match ]; then 
+        echo "Invoice number in use: $inv_no."
         exit 1
     fi 
+
+    read -p "Date [$today]: " d 
+    if [ "$d" == "" ]; then 
+        d=$today
+    fi
 
     if [[ ! "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then 
         echo "Invalid date."
         exit 1
     fi
 
-    echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
-    cat $csvfile | \
-        awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s ','
-    echo "Record successfully added."
+    read -p "Client: " client 
+
+    while [[ $amt == "" ]]; do 
+        read -p "Amount due: " amt 
+    done 
+
+    if [[ ! "$amt" =~ ^[0-9.]+$ ]]; then 
+        echo "Invalid amount."
+        exit 1
+    fi 
+
+    data=$(echo "$inv_no,$d,$client,$amt,NA,NA,NA")
+    printf "%s \n %s \n" $fields $data | column -tx -s ','
+
+    read -p "Write record to file [y]: " answer 
+    if [[ "$answer" == "" ]]; then
+        answer="y"
+    fi
+
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
+#        cat $csvfile | \
+#            awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s ','
+        echo "Record added."
+    else    
+        echo "Record discarded."
+    fi
 }
 
 function doClients {
@@ -76,6 +110,7 @@ function doClients {
     cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
 }
 
+# input: $1 (optional): invoice number
 function doDelete {
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
@@ -83,23 +118,13 @@ function doDelete {
         inv_no=$1
     fi 
 
-    local answer
-    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
-
-    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number."
-        exit 1
-    fi 
-
-    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
-        echo "Invoice number out of range."
-        exit 1
-    fi 
+    validateInvNo $inv_no
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
         column -tx -s ','
 
+    local answer
     read -p "Delete this invoice? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
         cat $csvfile | \
@@ -110,6 +135,7 @@ function doDelete {
     fi
 }
 
+# input: $1 (optional): invoice number
 function doEdit {
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
@@ -117,23 +143,13 @@ function doEdit {
         inv_no=$1
     fi 
 
-    local answer
-    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
-
-    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number."
-        exit 1
-    fi 
-
-    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
-        echo "Invoice number out of range."
-        exit 1
-    fi 
+    validateInvNo $inv_no
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
         column -tx -s ','
 
+    local answer
     read -p "Edit this invoice? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
         inv_dt=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1==i) print $0 }' | cut -f2 -d,)
@@ -212,6 +228,7 @@ function doList {
     cat $csvfile | column -tx -s ','
 }
 
+# input: $1 (optional): invoice number
 function doPay {
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
@@ -219,23 +236,13 @@ function doPay {
         inv_no=$1
     fi 
 
-    local answer
-    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
-
-    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number."
-        exit 1
-    fi 
-
-    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
-        echo "Invoice number out of range."
-        exit 1
-    fi 
+    validateInvNo $inv_no
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
         column -tx -s ','
 
+    local answer
     read -p "Mark this invoice paid? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
         today=$(date +%Y-%m-%d)
@@ -279,6 +286,7 @@ function doPay {
     fi 
 }
 
+# input: $1 (optional): clientID
 function doReport {
     if [ "$#" -lt 1 ]; then
         read -p "Client: " client 
@@ -310,6 +318,7 @@ function doReport {
         column -tx -s ','
 }
 
+# input: $1 (optional): invoice number
 function doShow {
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
@@ -317,18 +326,7 @@ function doShow {
         inv_no=$1
     fi 
 
-    local answer
-    max=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1)
-
-    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number."
-        exit 1
-    fi 
-
-    if [[ "$inv_no" -gt "$max" || "$inv_no" -lt 0 ]]; then 
-        echo "Invoice number out of range."
-        exit 1
-    fi 
+    validateInvNo $inv_no
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
