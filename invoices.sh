@@ -301,7 +301,7 @@ function doReport {
         exit 1
     fi 
 
-    echo -e "\nClientID:\t\t$client"
+    echo -e "\nClientID:\t$client"
     cat $csvfile | \
         awk -F, -v client="$client" '$3==client { COUNT++; BILLED += $4; PAID += $6; DUE += $4-$6 } END \
             { if (COUNT == 0) print "No invoices found.\n" 
@@ -312,10 +312,18 @@ function doReport {
                 "\n" 
             }'
     echo "Invoices:"
+    # this version of the code shows unpaid balances
+    # cat $csvfile | \
+    #     awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
+    #     awk -F, -v OFS="," 'NR==1 { $(NF+1)="past_due"; print $0 } 
+    #                         NR>1 { if ($6 != $4) print $0,$4-$6; else print $0 }' | \
+    #     column -tx -s ','
+
+        # this version of the code calculates the number of days an invoice is past-due.
     cat $csvfile | \
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
-        awk -F, -v OFS="," 'NR==1 { $(NF+1)="past_due"; print $0 } 
-                            NR>1 { if ($6 != $4) print $0,$4-$6; else print $0 }' | \
+        awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
+                NR>1 { if ($6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=(today-inv_dt)/86400 }; print $0 }' | \
         column -tx -s ','
 }
 
