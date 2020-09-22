@@ -30,6 +30,12 @@ function usage() {
 
 }
 
+function backupCSV {
+    backup=$csvfile".bak"
+    echo -e "\nBacking up database to: $backup\n"
+    cp $csvfile $backup    
+}
+
 # confirm invoice number is valid
 # input: $1: an invoice number
 function validateInvNo {
@@ -97,6 +103,9 @@ function doAdd {
     fi
 
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        # make a backup of the database...
+        backupCSV
+
         echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
 #        cat $csvfile | \
 #            awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s ','
@@ -128,6 +137,9 @@ function doDelete {
     local answer
     read -p "Delete this invoice? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        # make a backup of the database...
+        backupCSV
+
         cat $csvfile | \
             awk -F, -v i="$inv_no" '{ if (NR==1 || $1 != i) print $0 }' > tmp && mv tmp $csvfile
 
@@ -212,6 +224,9 @@ function doEdit {
             exit 1
         fi
 
+        # make a backup of the database...
+        backupCSV
+    
         s=$(echo "$inv_no,$inv_dt,$client,$amt_due,$pd_dt,$amt_pd,$taxes")
         cat $csvfile | \
             awk -F, -v i="$inv_no" -v s="$s" '{ if ($1 == i) print s; else print $0 }' > tmp && mv tmp $csvfile
@@ -272,6 +287,9 @@ function doPay {
                 echo "Invalid payment date."
                 exit 1
             fi
+
+            # make a backup of the database...
+            backupCSV
 
             cat $csvfile | \
                 awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1==i) { $6=a; $5=d } print $0 }' > tmp && mv tmp $csvfile
@@ -368,6 +386,9 @@ function doTaxes {
     local answer 
     read -p "Mark taxes paid for these invoices? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        # make a backup of the database...
+        backupCSV
+
         read -p "Value for taxes field: " taxes
 
         cat $csvfile | \
