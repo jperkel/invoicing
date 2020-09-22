@@ -6,7 +6,8 @@
 #
 
 
-# variables
+# default invoice database; you can specify an alternative location 
+# as the last argument on the command line, eg ./invoices.sh unpaid mysheet2.csv.
 csvfile=~/mysheet.csv
 fields="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
 
@@ -45,7 +46,7 @@ function validateInvNo {
         exit 1
     fi 
 
-    match=$(cat ~/mysheet.csv | sed "1d" | cut -f1 -d, | sort -n | grep $inv_no)
+    match=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | grep $inv_no)
     if [ -z $match ]; then 
         echo "Invoice not found: $inv_no."
         exit 1
@@ -67,7 +68,7 @@ function doAdd {
         exit 1
     fi 
 
-    match=$(cat ~/mysheet.csv | sed "1d" | cut -f1 -d, | grep $inv_no)
+    match=$(cat $csvfile | sed "1d" | cut -f1 -d, | grep $inv_no)
     if [ ! -z $match ]; then 
         echo "Invoice number in use: $inv_no."
         exit 1
@@ -313,7 +314,7 @@ function doReport {
         client=$1
     fi 
 
-    match=$(cat ~/mysheet.csv | sed "1d" | cut -f3 -d, | sort | uniq | grep $client)
+    match=$(cat $csvfile | sed "1d" | cut -f3 -d, | sort | uniq | grep $client)
     if [ -z $match ]; then 
         echo "No records found for client: $client."
         exit 1
@@ -416,6 +417,15 @@ function doUnpaid {
 }
 
 function main {
+    # if the last cmdline argument is a csv file, use that as the database
+    # see https://unix.stackexchange.com/questions/444829/how-does-work-in-bash-to-get-the-last-command-line-argument
+    match=$(echo ${!#} | grep "\.csv$")
+    if [ $match ]; then
+        csvfile=$match
+    fi
+
+    echo -e "\nUsing invoice database: $csvfile\n"
+
     if [ ! -e $csvfile ]; then 
         local answer 
         read -p "Invoice database not found. Would you like to create one? [y]: " answer 
@@ -498,4 +508,4 @@ function main {
     esac
 }
 
-main $1 $2
+main $@

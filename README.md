@@ -9,7 +9,7 @@ This script creates and manages a comma-separated values (CSV)-based invoice spr
 - Amount paid 
 - Taxes (eg: "PAID", or "Q2/20" or whatever you find useful)
 
-By default the spreadsheet is located in `~/mysheet.csv`, but you can modify that on line 10. An example spreadsheet is included in the repository. 
+By default the spreadsheet is located in `~/mysheet.csv`, but you can modify that on line 10. An example spreadsheet is included in the repository. Alternatively, supply the spreadsheet location as the last command-line argument. For instance: `invoices report CLIENT_A mysheet2.csv`.
 
 The script supports the following commands: 
 - `add`: Add invoice
