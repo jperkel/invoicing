@@ -422,6 +422,10 @@ function main {
     match=$(echo ${!#} | grep "\.csv$")
     if [ $match ]; then
         csvfile=$match
+        # remove the filename from the arg list
+        # see https://stackoverflow.com/questions/37624085/delete-final-positional-argument-from-command-in-bash
+        set -- "${@: 1: $#-1}"
+        echo "Params: $@"
     fi
 
     echo -e "\nUsing invoice database: $csvfile\n"
