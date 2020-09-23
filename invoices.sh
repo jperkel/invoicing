@@ -421,18 +421,21 @@ function main {
     # see https://unix.stackexchange.com/questions/444829/how-does-work-in-bash-to-get-the-last-command-line-argument
     match=$(echo ${!#} | grep "\.csv$")
     if [ $match ]; then
-        csvfile=$match
-        # remove the filename from the arg list
-        # see https://stackoverflow.com/questions/37624085/delete-final-positional-argument-from-command-in-bash
-        set -- "${@: 1: $#-1}"
-        echo "Params: $@"
+        if [ -e $match ]; then 
+            csvfile=$match
+            # remove the filename from the arg list
+            # see https://stackoverflow.com/questions/37624085/delete-final-positional-argument-from-command-in-bash
+            set -- "${@: 1: $#-1}"
+            echo -e "\nUsing invoice database: $csvfile\n"
+        else 
+            echo "File not found: $match"
+            exit 1
+        fi
     fi
-
-    echo -e "\nUsing invoice database: $csvfile\n"
 
     if [ ! -e $csvfile ]; then 
         local answer 
-        read -p "Invoice database not found. Would you like to create one? [y]: " answer 
+        read -p "Invoice database not found. Create it? [y]: " answer 
         if [[ "$answer" == "" ]]; then 
             answer="y"
         fi
