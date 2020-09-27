@@ -20,10 +20,11 @@ function usage() {
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
     echo -e "\t\tclients\tList clientIDs"
+    echo -e "\t\tcreate\tCreate new invoices database <optional: filename>"
+    echo -e "\t\tdefault\tSet default invoice database <option: invoice #>"
     echo -e "\t\tdelete\tDelete invoice <optional: invoice #>"
     echo -e "\t\tedit\tEdit invoice <optional: invoice #>"
     echo -e "\t\thelp\tDisplay help"
-    echo -e "\t\tinit\tCreate new invoices database <optional: filename>"
     echo -e "\t\tlist\tList all invoices"
     echo -e "\t\tpay\tPay invoice <optional: invoice #>"
     echo -e "\t\treport\tDisplay summary for one client <optional: clientID>"
@@ -57,6 +58,8 @@ function validateInvNo {
 }
 
 function doAdd {
+    echo "Add invoice"
+    echo -e "Invoices database: $csvfile\n"
     # next invoice number
     next=$(( $(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | tail -1) + 1 ))
     today=$(date +%Y-%m-%d)
@@ -120,12 +123,48 @@ function doAdd {
 }
 
 function doClients {
-    echo "Listing clientIDs:"
+    echo "Listing clientIDs"
+    echo -e "Invoices database: $csvfile\n"
+
     cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
+}
+
+# input: $1 (optional): filename
+function doDefault {
+    csvfile=$1
+    if [[ "$csvfile" == "" ]]; then 
+        read -p "Filename: " csvfile
+    fi 
+
+    if [ ! -e $csvfile ]; then 
+        echo "File not found: $csvfile"
+        echo -e "Use \`invoices init\` to create new invoice database."
+        exit 1
+    fi 
+
+    local answer
+    if [[ -e $configfile && ! $configfile == $csvfile ]]; then 
+        echo "Default invoices database: $(cat $configfile)"
+        read -p "Make $csvfile default database instead [n]: " answer 
+        if [[ "$answer" == "" ]]; then    
+            answer="n"
+        fi 
+
+        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+            cp $configfile $configfile".bak"
+            echo $csvfile > $configfile
+        fi
+    else 
+        echo $csvfile > $configfile 
+    fi
+
 }
 
 # input: $1 (optional): invoice number
 function doDelete {
+    echo "Delete invoice"
+    echo -e "Invoices database: $csvfile\n"
+
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
     else 
@@ -154,6 +193,9 @@ function doDelete {
 
 # input: $1 (optional): invoice number
 function doEdit {
+    echo "Edit invoice"
+    echo -e "Invoices database: $csvfile\n"
+
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
     else 
@@ -245,48 +287,63 @@ function doEdit {
 }
 
 # input: $1 (optional): filename
-function doInit {
+function doCreate {
+    echo "Create invoice"
+    echo -e "Invoices database: $csvfile\n"
+
     csvfile=$1
     if [[ "$csvfile" == "" ]]; then 
-        csvfile=$default_csvfile
+        read -p "Filename [$default_csvfile]: " csvfile
+
+        if [[ "$csvfile" == "" ]]; then   
+            csvfile=$default_csvfile
+        fi
     fi 
 
-    local answer="y"
+    local answer
     if [ -e $csvfile ]; then
         read -p "File $csvfile already exists. Do you want to overwrite it [n]: " answer
     fi 
 
-    if [[ "$answer" == "" ]]; then
+    if [[ "$answer" == "" ]]; then  
         answer="n"
-    fi 
+    fi
 
-    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
         echo $fields > $csvfile 
         echo "File $csvfile created."
 
-        if [ -e $configfile ]; then 
-            echo "Default invoices database: $(cat $configfile)"
-            read -p "Make $csvfile default database instead [n]: " answer 
-            if [[ "$answer" == "" ]]; then    
-                answer="n"
-            fi 
+        doDefault $csvfile 
 
-            if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-                cp $configfile $configfile".bak"
-                echo $csvfile > $configfile
-            fi
-        else 
-            echo $csvfile > $configfile 
-        fi
+        # if [ -e $configfile ]; then 
+        #     echo "Default invoices database: $(cat $configfile)"
+        #     read -p "Make $csvfile default database instead [n]: " answer 
+        #     if [[ "$answer" == "" ]]; then    
+        #         answer="n"
+        #     fi 
+
+        #     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+        #         cp $configfile $configfile".bak"
+        #         echo $csvfile > $configfile
+        #     fi
+        # else 
+        #     echo $csvfile > $configfile 
+        # fi
     fi 
 }
 
 function doList {
+    echo "List invoices"
+    echo -e "Invoices database: $csvfile\n"
+
     cat $csvfile | column -tx -s ','
 }
 
 # input: $1 (optional): invoice number
 function doPay {
+    echo "Pay invoice"
+    echo -e "Invoices database: $csvfile\n"
+
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
     else 
@@ -348,6 +405,9 @@ function doPay {
 
 # input: $1 (optional): clientID
 function doReport {
+    echo "Invoice report"
+    echo -e "Invoices database: $csvfile\n"
+
     if [ "$#" -lt 1 ]; then
         read -p "ClientID: " client 
     else 
@@ -388,6 +448,9 @@ function doReport {
 
 # input: $1 (optional): invoice number
 function doShow {
+    echo "Show invoice"
+    echo -e "Invoices database: $csvfile\n"
+
     if [ "$#" -lt 1 ]; then
         read -p "Invoice # : " inv_no 
     else 
@@ -402,7 +465,9 @@ function doShow {
 }
 
 function doSummary {
-    echo "Client summary:"
+    echo "Client summary"
+    echo -e "Invoices database: $csvfile\n"
+
     # for each client, tally # of invoices, amt billed, amt paid, balance due; write the data out as a CSV
     data=$(cat $csvfile | sed "1d" | \
             awk -F, '{ count[$3]++; billed[$3] += $4; paid[$3] += $6; unpaid[$3] += $4-$6; } END \
@@ -417,6 +482,9 @@ function doSummary {
 }
 
 function doTaxes {
+    echo "Taxes"
+    echo -e "Invoices database: $csvfile\n"
+
     cat $csvfile | \
         awk -F, '{ if (($7 == "NA" && $6 != "NA") || NR==1) print $0 }' | \
         column -tx -s ','
@@ -441,6 +509,8 @@ function doTaxes {
 
 function doUnpaid {
     echo "Outstanding invoices:"
+    echo -e "Invoices database: $csvfile\n"
+
     # this version of the code shows the outstanding balance
 #    cat $csvfile | \
 #        awk -F, -v OFS="," 'NR==1 { $(NF+1)="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
@@ -470,8 +540,6 @@ function main {
     elif [ -e $configfile ]; then
         csvfile=$(head -n 1 $configfile)
 
-    else    
-        csvfile=$default_csvfile
     fi 
 
     if [ "$#" -lt 1 ]; then
@@ -492,6 +560,14 @@ function main {
         doClients $1
         ;;
 
+    "create")
+        doCreate $match
+        ;; 
+
+    "default")
+        doDefault $match
+        ;;
+
     "delete")
         doDelete $1
         ;;
@@ -503,10 +579,6 @@ function main {
     "help")
         usage 
         ;;
-
-    "init")
-        doInit $csvfile
-        ;; 
 
     "list")
         doList $1
