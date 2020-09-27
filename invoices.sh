@@ -8,7 +8,9 @@
 
 # default invoice database; you can specify an alternative location 
 # as the last argument on the command line, eg ./invoices.sh unpaid mysheet2.csv.
-csvfile=~/mysheet.csv
+default_csvfile=~/myinvoices.csv
+configfile=~/invoices.config 
+
 fields="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
 
 # functions
@@ -21,6 +23,7 @@ function usage() {
     echo -e "\t\tdelete\tDelete invoice <optional: invoice #>"
     echo -e "\t\tedit\tEdit invoice <optional: invoice #>"
     echo -e "\t\thelp\tDisplay help"
+    echo -e "\t\tinit\tCreate new invoices database <optional: filename>"
     echo -e "\t\tlist\tList all invoices"
     echo -e "\t\tpay\tPay invoice <optional: invoice #>"
     echo -e "\t\treport\tDisplay summary for one client <optional: clientID>"
@@ -86,7 +89,7 @@ function doAdd {
 
     read -p "ClientID: " client 
 
-    while [[ $amt == "" ]]; do 
+    while [[ "$amt" == "" ]]; do 
         read -p "Amount due: " amt 
     done 
 
@@ -239,6 +242,43 @@ function doEdit {
 
         echo -e "\nRecord updated."
     fi
+}
+
+# input: $1 (optional): filename
+function doInit {
+    csvfile=$1
+    if [[ "$csvfile" == "" ]]; then 
+        csvfile=$default_csvfile
+    fi 
+
+    local answer="y"
+    if [ -e $csvfile ]; then
+        read -p "File $csvfile already exists. Do you want to overwrite it [n]: " answer
+    fi 
+
+    if [[ "$answer" == "" ]]; then
+        answer="n"
+    fi 
+
+    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+        echo $fields > $csvfile 
+        echo "File $csvfile created."
+
+        if [ -e $configfile ]; then 
+            echo "Default invoices database: $(cat $configfile)"
+            read -p "Make $csvfile default database instead [n]: " answer 
+            if [[ "$answer" == "" ]]; then    
+                answer="n"
+            fi 
+
+            if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
+                cp $configfile $configfile".bak"
+                echo $csvfile > $configfile
+            fi
+        else 
+            echo $csvfile > $configfile 
+        fi
+    fi 
 }
 
 function doList {
@@ -417,38 +457,22 @@ function doUnpaid {
 }
 
 function main {
+    local answer
     # if the last cmdline argument is a csv file, use that as the database
     # see https://unix.stackexchange.com/questions/444829/how-does-work-in-bash-to-get-the-last-command-line-argument
     match=$(echo ${!#} | grep "\.csv$")
     if [ $match ]; then
-        if [ -e $match ]; then 
-            csvfile=$match
-            # remove the filename from the arg list
-            # see https://stackoverflow.com/questions/37624085/delete-final-positional-argument-from-command-in-bash
-            set -- "${@: 1: $#-1}"
-            echo -e "\nUsing invoice database: $csvfile\n"
-        else 
-            echo "File not found: $match"
-            exit 1
-        fi
-    fi
+        csvfile=$match
+        # remove the filename from the arg list
+        # see https://stackoverflow.com/questions/37624085/delete-final-positional-argument-from-command-in-bash
+        set -- "${@: 1: $#-1}"
 
-    if [ ! -e $csvfile ]; then 
-        local answer 
-        read -p "Invoice database not found. Create it? [y]: " answer 
-        if [[ "$answer" == "" ]]; then 
-            answer="y"
-        fi
+    elif [ -e $configfile ]; then
+        csvfile=$(head -n 1 $configfile)
 
-        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-            echo $fields > $csvfile 
-            echo "File $csvfile created."
-
-        else 
-            echo "No invoice database found."
-            exit 1
-        fi 
-    fi
+    else    
+        csvfile=$default_csvfile
+    fi 
 
     if [ "$#" -lt 1 ]; then
         echo "Error: Command required."
@@ -479,6 +503,10 @@ function main {
     "help")
         usage 
         ;;
+
+    "init")
+        doInit $csvfile
+        ;; 
 
     "list")
         doList $1

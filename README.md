@@ -14,13 +14,14 @@ By default the spreadsheet is located in `~/mysheet.csv`, but you can modify tha
 The script supports the following commands: 
 - `add`: Add invoice
 - `clients`: List clientIDs
-- `delete`: Delete invoice <invoice #>
-- `edit`: Edit invoice <invoice #>
+- `delete`: Delete invoice <optional: invoice #>
+- `edit`: Edit invoice <optional: invoice #>
 - `help`: Display help
+- `init`: Create new database <optional: filename>
 - `list`: List all invoices
-- `pay`: Pay invoice <invoice #>
-- `report`: Show details for one client <clientID>
-- `show`: Show single invoice <invoice #>
+- `pay`: Pay invoice <optional: invoice #>
+- `report`: Show details for one client <optional: clientID>
+- `show`: Show single invoice <optional: invoice #>
 - `summary`: Show summary of all clients
 - `taxes`: Mark taxes paid
 - `unpaid`: List unpaid invoices
@@ -75,6 +76,7 @@ inv_no  inv_date    clientID  amt_billed  paid_date   amt_paid  taxes_pd  past_d
 1. Install the script (`invoices.sh`) somewhere in your home directory. 
 2. Make the script executable with `chmod +x invoices.sh`.
 3. From a command line terminal (eg Mac Terminal) you should be able to execute it with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.
+4. Create a new invoices database with `invoices init`. 
 
 # License
 (from https://opensource.org/licenses/BSD-3-Clause) 
