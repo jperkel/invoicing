@@ -20,12 +20,12 @@ function usage() {
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
     echo -e "\t\tclients\tList clientIDs"
-    echo -e "\t\tcreate\tCreate new invoices database <optional: filename>"
-    echo -e "\t\tdefault\tSet default invoice database <option: invoice #>"
+    echo -e "\t\tdefault\tSet default invoice database <optional: invoice #>"
     echo -e "\t\tdelete\tDelete invoice <optional: invoice #>"
     echo -e "\t\tedit\tEdit invoice <optional: invoice #>"
     echo -e "\t\thelp\tDisplay help"
     echo -e "\t\tlist\tList all invoices"
+    echo -e "\t\tnewfile\tCreate new invoices database <optional: filename>"
     echo -e "\t\tpay\tPay invoice <optional: invoice #>"
     echo -e "\t\treport\tDisplay summary for one client <optional: clientID>"
     echo -e "\t\tshow\tDisplay single invoice <optional: invoice #>"
@@ -286,10 +286,16 @@ function doEdit {
     fi
 }
 
-# input: $1 (optional): filename
-function doCreate {
-    echo "Create invoice"
+function doList {
+    echo "List invoices"
     echo -e "Invoices database: $csvfile\n"
+
+    cat $csvfile | column -tx -s ','
+}
+
+# input: $1 (optional): filename
+function doNewDb {
+    echo "Create new invoice database"
 
     csvfile=$1
     if [[ "$csvfile" == "" ]]; then 
@@ -300,7 +306,7 @@ function doCreate {
         fi
     fi 
 
-    local answer
+    local answer="y"
     if [ -e $csvfile ]; then
         read -p "File $csvfile already exists. Do you want to overwrite it [n]: " answer
     fi 
@@ -314,29 +320,9 @@ function doCreate {
         echo "File $csvfile created."
 
         doDefault $csvfile 
-
-        # if [ -e $configfile ]; then 
-        #     echo "Default invoices database: $(cat $configfile)"
-        #     read -p "Make $csvfile default database instead [n]: " answer 
-        #     if [[ "$answer" == "" ]]; then    
-        #         answer="n"
-        #     fi 
-
-        #     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-        #         cp $configfile $configfile".bak"
-        #         echo $csvfile > $configfile
-        #     fi
-        # else 
-        #     echo $csvfile > $configfile 
-        # fi
+    else 
+        echo "File creation cancelled."
     fi 
-}
-
-function doList {
-    echo "List invoices"
-    echo -e "Invoices database: $csvfile\n"
-
-    cat $csvfile | column -tx -s ','
 }
 
 # input: $1 (optional): invoice number
@@ -560,8 +546,8 @@ function main {
         doClients $1
         ;;
 
-    "create")
-        doCreate $match
+    "newfile")
+        doNewDb $match
         ;; 
 
     "default")
