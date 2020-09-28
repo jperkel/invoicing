@@ -6,8 +6,10 @@
 #
 
 
-# default invoice database; you can specify an alternative location 
+# Default invoice database; you can specify an alternative location 
 # as the last argument on the command line, eg ./invoices.sh unpaid mysheet2.csv.
+# The `newfile` command creates a new database and saves its location in $configfile
+# If no location is given at the command line, the location in $configfile is used.
 default_csvfile=~/myinvoices.csv
 configfile=~/invoices.config 
 
@@ -354,11 +356,11 @@ function doPay {
             read -p "Amount paid [$due]: " amt 
             read -p "Date [$today]: " d 
 
-            if [[ $amt == "" ]]; then
+            if [[ "$amt" == "" ]]; then
                 amt=$due
             fi 
 
-            if [[ $d == "" ]]; then
+            if [[ "$d" == "" ]]; then
                 d=$today 
             fi 
 
@@ -525,7 +527,12 @@ function main {
 
     elif [ -e $configfile ]; then
         csvfile=$(head -n 1 $configfile)
+    fi 
 
+    if [ -z $csvfile ]; then
+        echo -e "\nError: No invoices database found. Use \`invoices newfile\` to create one.\n"
+        usage 
+        exit 1
     fi 
 
     if [ "$#" -lt 1 ]; then
@@ -540,15 +547,11 @@ function main {
     case $command in
     "add")
         doAdd $1
-    ;;
+        ;;
 
     "clients")
         doClients $1
         ;;
-
-    "newfile")
-        doNewDb $match
-        ;; 
 
     "default")
         doDefault $match
@@ -569,6 +572,10 @@ function main {
     "list")
         doList $1
         ;;
+
+    "newfile")
+        doNewDb $match
+        ;; 
 
     "pay")
         doPay $1
