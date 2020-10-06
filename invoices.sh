@@ -13,7 +13,7 @@
 default_csvfile=~/myinvoices.csv
 configfile=~/invoices.config 
 
-fields="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
+colnames="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
 
 # functions
 function usage() {
@@ -52,7 +52,8 @@ function validateInvNo {
         exit 1
     fi 
 
-    match=$(cat $csvfile | sed "1d" | cut -f1 -d, | sort -n | grep $inv_no)
+    # limit search to exact matches (ie, 'grep 4' should only return 4, not 14, 24, 40, ...)
+    match=$(cat $csvfile | sed "1d" | cut -f1 -d, | grep "^"$inv_no"$")
     if [ -z $match ]; then 
         echo "Invoice not found: $inv_no."
         exit 1
@@ -104,7 +105,8 @@ function doAdd {
     fi 
 
     data=$(echo "$inv_no,$d,$client,$amt,NA,NA,NA")
-    printf "%s \n %s \n" $fields $data | column -tx -s ','
+    echo "" # insert newline
+    printf "%s\n%s\n" $colnames $data | column -tx -s,
 
     read -p "Write record to file [y]: " answer 
     if [[ "$answer" == "" ]]; then
@@ -117,7 +119,7 @@ function doAdd {
 
         echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
 #        cat $csvfile | \
-#            awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s ','
+#            awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s,
         echo "Record added."
     else    
         echo "Record discarded."
@@ -177,7 +179,7 @@ function doDelete {
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s ','
+        column -tx -s,
 
     local answer
     read -p "Delete this invoice? [n]: " answer
@@ -188,7 +190,7 @@ function doDelete {
         cat $csvfile | \
             awk -F, -v i="$inv_no" '{ if (NR==1 || $1 != i) print $0 }' > tmp && mv tmp $csvfile
 
-        cat $csvfile | column -tx -s ','
+        cat $csvfile | column -tx -s,
         echo "Invoice deleted."
     fi
 }
@@ -208,7 +210,7 @@ function doEdit {
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s ','
+        column -tx -s,
 
     local answer
     read -p "Edit this invoice? [n]: " answer
@@ -282,7 +284,7 @@ function doEdit {
         echo -e "\n"
         cat $csvfile | \
             awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-            column -tx -s ','
+            column -tx -s,
 
         echo -e "\nRecord updated."
     fi
@@ -292,7 +294,7 @@ function doList {
     echo "List invoices"
     echo -e "Invoices database: $csvfile\n"
 
-    cat $csvfile | column -tx -s ','
+    cat $csvfile | column -tx -s,
 }
 
 # input: $1 (optional): filename
@@ -318,7 +320,7 @@ function doNewDb {
     fi
 
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-        echo $fields > $csvfile 
+        echo $colnames > $csvfile 
         echo "File $csvfile created."
 
         doDefault $csvfile 
@@ -342,7 +344,7 @@ function doPay {
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s ','
+        column -tx -s,
 
     local answer
     read -p "Mark this invoice paid? [n]: " answer
@@ -381,7 +383,7 @@ function doPay {
                 awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1==i) { $6=a; $5=d } print $0 }' > tmp && mv tmp $csvfile
             cat $csvfile | \
                 awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-                column -tx -s ','
+                column -tx -s,
 
             echo -e "Invoice paid.\n"
 
@@ -424,14 +426,14 @@ function doReport {
     #     awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
     #     awk -F, -v OFS="," 'NR==1 { $(NF+1)="past_due"; print $0 } 
     #                         NR>1 { if ($6 != $4) print $0,$4-$6; else print $0 }' | \
-    #     column -tx -s ','
+    #     column -tx -s,
 
         # this version of the code calculates the number of days an invoice is past-due.
     cat $csvfile | \
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
         awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
                 NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=(today-inv_dt)/86400 }; print $0 }' | \
-        column -tx -s ','
+        column -tx -s,
 }
 
 # input: $1 (optional): invoice number
@@ -449,7 +451,7 @@ function doShow {
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s ','
+        column -tx -s,
 }
 
 function doSummary {
@@ -462,7 +464,7 @@ function doSummary {
             { for (c in count) print c","count[c]","billed[c]","paid[c]","unpaid[c] }')
     headings=$(echo "clientID,invoices,billed,paid,unpaid")
     # add headings to the data and format
-    printf "%s\n%s\n" $headings $data | column -tx -s ','
+    printf "%s\n%s\n" $headings $data | column -tx -s,
 
     # count total # of invoices, total amount billed, paid and unpaid
     echo "$(printf "%s\n" $data | awk -F, '{count += $2; sum += $3; paid += $4; unpaid += $5 } END \
@@ -475,7 +477,7 @@ function doTaxes {
 
     cat $csvfile | \
         awk -F, '{ if (($7 == "NA" && $6 != "NA") || NR==1) print $0 }' | \
-        column -tx -s ','
+        column -tx -s,
 
     taxable=$(cat $csvfile | awk -F, '$7 == "NA" && $6 != "NA" { INC += $6; } END { print "Untaxed income: " INC }')
     echo -e "\n$taxable"
@@ -490,7 +492,7 @@ function doTaxes {
 
         cat $csvfile | \
             awk -F, -v OFS="," -v t="$taxes" '{ if ($7=="NA") { $7=t } print $0 }' > tmp && mv tmp $csvfile
-        cat $csvfile | column -tx -s ','
+        cat $csvfile | column -tx -s,
         echo -e "Record updated.\n"
     fi     
 }
@@ -502,12 +504,12 @@ function doUnpaid {
     # this version of the code shows the outstanding balance
 #    cat $csvfile | \
 #        awk -F, -v OFS="," 'NR==1 { $(NF+1)="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
-#        column -tx -s ','
+#        column -tx -s,
 
     # this version of the code calculates the number of days an invoice is past-due.
     cat $csvfile | \
         awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days_past_due"; print $0; } NR>1 { if (($6 < $4) || ($6 == "NA")) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,(today-inv_dt)/86400 } }' | \
-        column -tx -s ','
+        column -tx -s,
 
     echo -e "\n\tUnpaid summary:"
     cat $csvfile | \
