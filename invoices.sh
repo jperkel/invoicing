@@ -169,7 +169,7 @@ function doDelete {
     echo "Delete invoice"
     echo -e "Invoices database: $csvfile\n"
 
-    if [ "$#" -lt 1 ]; then
+    if [ "$#" -eq 0 ]; then
         read -p "Invoice # : " inv_no 
     else 
         inv_no=$1
@@ -200,7 +200,7 @@ function doEdit {
     echo "Edit invoice"
     echo -e "Invoices database: $csvfile\n"
 
-    if [ "$#" -lt 1 ]; then
+    if [ "$#" -eq 0 ]; then
         read -p "Invoice # : " inv_no 
     else 
         inv_no=$1
@@ -334,7 +334,7 @@ function doPay {
     echo "Pay invoice"
     echo -e "Invoices database: $csvfile\n"
 
-    if [ "$#" -lt 1 ]; then
+    if [ "$#" -eq 0 ]; then
         read -p "Invoice # : " inv_no 
     else 
         inv_no=$1
@@ -398,13 +398,13 @@ function doReport {
     echo "Invoice report"
     echo -e "Invoices database: $csvfile\n"
 
-    if [ "$#" -lt 1 ]; then
+    if [ "$#" -eq 0 ]; then
         read -p "ClientID: " client 
     else 
         client=$1
     fi 
 
-    match=$(cat $csvfile | sed "1d" | cut -f3 -d, | sort | uniq | grep $client)
+    match=$(cat $csvfile | sed "1d" | cut -f3 -d, | sort | uniq | grep "$client")
     if [ -z $match ]; then 
         echo "No records found for client: $client."
         exit 1
@@ -441,7 +441,7 @@ function doShow {
     echo "Show invoice"
     echo -e "Invoices database: $csvfile\n"
 
-    if [ "$#" -lt 1 ]; then
+    if [ "$#" -eq 0 ]; then
         read -p "Invoice # : " inv_no 
     else 
         inv_no=$1
@@ -518,7 +518,13 @@ function doUnpaid {
 
 function main {
     local answer
-    # if the last cmdline argument is a csv file, use that as the database
+
+    # if there is a configfile, read it to find location of invoices database
+    if [ -e $configfile ]; then
+        csvfile=$(head -n 1 $configfile)
+    fi 
+
+    # if the last cmdline argument is a csv file, use that as the database instead
     # see https://unix.stackexchange.com/questions/444829/how-does-work-in-bash-to-get-the-last-command-line-argument
     match=$(echo ${!#} | grep "\.csv$")
     if [ $match ]; then
@@ -526,19 +532,24 @@ function main {
         # remove the filename from the arg list
         # see https://stackoverflow.com/questions/37624085/delete-final-positional-argument-from-command-in-bash
         set -- "${@: 1: $#-1}"
+    fi
 
-    elif [ -e $configfile ]; then
-        csvfile=$(head -n 1 $configfile)
-    fi 
-
+    # if $csvfile is not set, no database has been found
     if [ -z $csvfile ]; then
         echo -e "\nError: No invoices database found. Use \`invoices newfile\` to create one.\n"
         usage 
         exit 1
     fi 
 
-    if [ "$#" -lt 1 ]; then
-        echo "Error: Command required."
+    # if $csvfile doesn't exist, exit.
+    if [ ! -e $csvfile ]; then
+        echo -e "\nError: File not found: $csvfile\n"
+        exit 
+    fi
+
+    # there should be at least one argument provided
+    if [ "$#" -eq 0 ]; then
+        echo -e "Error: Command required.\n"
         usage
         exit 1
     fi 
@@ -548,11 +559,11 @@ function main {
 
     case $command in
     "add")
-        doAdd $1
+        doAdd "$@"
         ;;
 
     "clients")
-        doClients $1
+        doClients "$@"
         ;;
 
     "default")
@@ -560,11 +571,11 @@ function main {
         ;;
 
     "delete")
-        doDelete $1
+        doDelete "$@"
         ;;
 
     "edit")
-        doEdit $1
+        doEdit "$@"
         ;;
 
     "help")
@@ -572,7 +583,7 @@ function main {
         ;;
 
     "list")
-        doList $1
+        doList "$@"
         ;;
 
     "newfile")
@@ -580,27 +591,27 @@ function main {
         ;; 
 
     "pay")
-        doPay $1
+        doPay "$@"
         ;;
 
     "report")
-        doReport $1 
+        doReport "$@" 
         ;;
 
     "show")
-        doShow $1
+        doShow "$@"
         ;;
 
     "summary")
-        doSummary $1
+        doSummary "$@"
         ;;
 
     "taxes")
-        doTaxes $1
+        doTaxes "$@"
         ;;
 
     "unpaid")
-        doUnpaid $1
+        doUnpaid "$@"
         ;;
 
     *)
@@ -610,4 +621,4 @@ function main {
     esac
 }
 
-main $@
+main "$@"
