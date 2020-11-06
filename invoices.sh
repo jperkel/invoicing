@@ -46,16 +46,21 @@ function backupCSV {
 # confirm invoice number is valid
 # input: $1: invoice number
 function validateInvNo {
+    if [ "$#" -eq 0 ]; then
+        echo "No invoice number supplied."
+        exit 1
+    fi
+
     local inv_no=$1
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number."
+        echo "Invalid invoice number: $inv_no"
         exit 1
     fi 
 
     # limit search to exact matches (ie, 'grep 4' should only return 4, not 14, 24, 40, ...)
     match=$(cat $csvfile | sed "1d" | cut -f1 -d, | grep "^"$inv_no"$")
     if [ -z $match ]; then 
-        echo "Invoice not found: $inv_no."
+        echo "Invoice not found: $inv_no"
         exit 1
     fi
 }
@@ -63,7 +68,16 @@ function validateInvNo {
 # print a single invoice by number, adding a days_past_due column
 # input: $1: invoice number
 function showInvByNumber {
+    if [ "$#" -eq 0 ]; then
+        echo "No invoice number supplied."
+        exit 1
+    fi
+
     local inv_no=$1
+    if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
+        echo "Invalid invoice number: $inv_no"
+        exit 1
+    fi 
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
