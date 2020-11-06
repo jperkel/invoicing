@@ -431,8 +431,8 @@ function doReport {
         # this version of the code calculates the number of days an invoice is past-due.
     cat $csvfile | \
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
-        awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
-                NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=(today-inv_dt)/86400 }; print $0 }' | \
+        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
+                NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) }; print $0 }' | \
         column -tx -s,
 }
 
@@ -508,7 +508,7 @@ function doUnpaid {
 
     # this version of the code calculates the number of days an invoice is past-due.
     cat $csvfile | \
-        awk -F, -v OFS="," -v today=$(date +%s) 'NR==1 { $(NF+1)="days_past_due"; print $0; } NR>1 { if (($6 < $4) || ($6 == "NA")) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,(today-inv_dt)/86400 } }' | \
+        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } NR>1 { if (($6 < $4) || ($6 == "NA")) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,int ((today-inv_dt)/86400) } }' | \
         column -tx -s,
 
     echo -e "\n\tUnpaid summary:"
