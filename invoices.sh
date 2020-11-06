@@ -130,7 +130,7 @@ function doClients {
     echo "Listing clientIDs"
     echo -e "Invoices database: $csvfile\n"
 
-    cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq
+    cat $csvfile | sed '1d' | cut -f3 -d, | sort | uniq | column
 }
 
 # input: $1 (optional): filename
@@ -294,7 +294,11 @@ function doList {
     echo "List invoices"
     echo -e "Invoices database: $csvfile\n"
 
-    cat $csvfile | column -tx -s,
+    cat $csvfile | \
+        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
+            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) }; print $0 }' | \
+            column -tx -s,
+
 }
 
 # input: $1 (optional): filename
@@ -451,7 +455,9 @@ function doShow {
 
     cat $csvfile | \
         awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s,
+        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
+            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) }; print $0 }' | \
+            column -tx -s,
 }
 
 function doSummary {
