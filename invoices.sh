@@ -44,7 +44,7 @@ function backupCSV {
 }
 
 # confirm invoice number is valid
-# input: $1: an invoice number
+# input: $1: invoice number
 function validateInvNo {
     local inv_no=$1
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
@@ -58,6 +58,19 @@ function validateInvNo {
         echo "Invoice not found: $inv_no."
         exit 1
     fi
+}
+
+# print a single invoice by number, adding a days_past_due column
+# input: $1: invoice number
+function showInvByNumber {
+    local inv_no=$1
+
+    cat $csvfile | \
+        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
+        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
+            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) } else { $8="NA"}; print $0 }' | \
+            column -tx -s,
+
 }
 
 function doAdd {
@@ -118,8 +131,7 @@ function doAdd {
         backupCSV
 
         echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $csvfile
-#        cat $csvfile | \
-#            awk -F, -v i="$inv_no" '{ if (NR==1 || $1==i) print $0 }' | column -tx -s,
+
         echo "Record added."
     else    
         echo "Record discarded."
@@ -177,9 +189,7 @@ function doDelete {
 
     validateInvNo $inv_no
 
-    cat $csvfile | \
-        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s,
+    showInvByNumber $inv_no
 
     local answer
     read -p "Delete this invoice? [n]: " answer
@@ -208,9 +218,7 @@ function doEdit {
 
     validateInvNo $inv_no
 
-    cat $csvfile | \
-        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s,
+    showInvByNumber $inv_no
 
     local answer
     read -p "Edit this invoice? [n]: " answer
@@ -296,7 +304,7 @@ function doList {
 
     cat $csvfile | \
         awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
-            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) }; print $0 }' | \
+            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) } else { $8="NA" }; print $0 }' | \
             column -tx -s,
 
 }
@@ -346,19 +354,21 @@ function doPay {
 
     validateInvNo $inv_no
 
-    cat $csvfile | \
-        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        column -tx -s,
+    showInvByNumber $inv_no
 
-    local answer
-    read -p "Mark this invoice paid? [n]: " answer
-    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
-        today=$(date +%Y-%m-%d)
-        pd=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f6 -d,)
-        due=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f4 -d,)
+    pd=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f6 -d,)
+    due=$(cat $csvfile | awk -F, -v i="$inv_no" '{ if ($1 == i) print $0 }' | cut -f4 -d,)
 
-        # see https://stackoverflow.com/questions/16529716/save-modifications-in-place-with-awk
-        if [[ "$pd" == "NA" || "$pd" -ne "$due" ]]; then 
+    if [[ "$pd" != "NA" && "$pd" -eq "$due" ]]; then
+        echo "Invoice already paid."
+    
+    else 
+        local answer
+        read -p "Mark this invoice paid? [n]: " answer
+        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+            today=$(date +%Y-%m-%d)
+
+            # see https://stackoverflow.com/questions/16529716/save-modifications-in-place-with-awk
             read -p "Amount paid [$due]: " amt 
             read -p "Date [$today]: " d 
 
@@ -385,14 +395,10 @@ function doPay {
 
             cat $csvfile | \
                 awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1==i) { $6=a; $5=d } print $0 }' > tmp && mv tmp $csvfile
-            cat $csvfile | \
-                awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-                column -tx -s,
+
+            showInvByNumber $inv_no
 
             echo -e "Invoice paid.\n"
-
-        else 
-            echo "Invoice already paid."
         fi
     fi 
 }
@@ -436,7 +442,7 @@ function doReport {
     cat $csvfile | \
         awk -F, -v client="$client" '{ if (NR==1 || client==$3) print $0 }' | \
         awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
-                NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) }; print $0 }' | \
+                NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) } else { $8="NA" }; print $0 }' | \
         column -tx -s,
 }
 
@@ -453,11 +459,7 @@ function doShow {
 
     validateInvNo $inv_no
 
-    cat $csvfile | \
-        awk -F, -v i="$inv_no" '{ if ($1==i || NR==1) print $0 }' | \
-        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
-            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) }; print $0 }' | \
-            column -tx -s,
+    showInvByNumber $inv_no
 }
 
 function doSummary {
@@ -481,25 +483,32 @@ function doTaxes {
     echo "Taxes"
     echo -e "Invoices database: $csvfile\n"
 
-    cat $csvfile | \
-        awk -F, '{ if (($7 == "NA" && $6 != "NA") || NR==1) print $0 }' | \
-        column -tx -s,
-
-    taxable=$(cat $csvfile | awk -F, '$7 == "NA" && $6 != "NA" { INC += $6; } END { print "Untaxed income: " INC }')
-    echo -e "\n$taxable"
-
-    local answer 
-    read -p "Mark taxes paid for these invoices? [n]: " answer
-    if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
-        # make a backup of the database...
-        backupCSV
-
-        read -p "Value for taxes field: " taxes
-
+    # check to see if any invoices have been paid but not taxed
+    untaxed=$(cat $csvfile | awk -F, '{ if ($7 == "NA" && $6 != "NA") print $0 }' | wc -l)
+    if [[ ! "$untaxed" -gt 0 ]]; then
+        echo "All paid invoices have been taxed."
+    else 
         cat $csvfile | \
-            awk -F, -v OFS="," -v t="$taxes" '{ if ($7=="NA") { $7=t } print $0 }' > tmp && mv tmp $csvfile
-        cat $csvfile | column -tx -s,
-        echo -e "Record updated.\n"
+            awk -F, '{ if (($7 == "NA" && $6 != "NA") || NR==1) print $0 }' | \
+            column -tx -s,
+
+        taxable=$(cat $csvfile | awk -F, '$7 == "NA" && $6 != "NA" { INC += $6; } END { print "Untaxed income: " INC }')
+        echo -e "\n$taxable"
+
+        local answer 
+        read -p "Mark taxes paid for these invoices? [n]: " answer
+        if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
+            # make a backup of the database...
+            backupCSV
+
+            read -p "Value for taxes field: " taxes
+
+            cat $csvfile | \
+                awk -F, -v OFS="," -v t="$taxes" '{ if ($7=="NA" && $6 != "NA") { $7=t } print $0 }' > tmp && mv tmp $csvfile
+            # cat $csvfile | column -tx -s,
+            doList
+            echo -e "Record updated.\n"
+        fi
     fi     
 }
 
