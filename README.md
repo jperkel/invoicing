@@ -14,7 +14,7 @@ By default the spreadsheet is located in `~/mysheet.csv`, but you can modify tha
 The script supports the following commands: 
 - `add`: Add invoice
 - `clients`: List clientIDs
-- `default`: Set default invoice database <optional: invoice #>
+- `default`: Set default invoice database <optional: filename>
 - `delete`: Delete invoice <optional: invoice #>
 - `edit`: Edit invoice <optional: invoice #>
 - `help`: Display help
