@@ -76,7 +76,7 @@ inv_no  inv_date    clientID  amt_billed  paid_date   amt_paid  taxes_pd  past_d
 # Installation
 1. Install the script (`invoices.sh`) somewhere in your home directory. 
 2. Make the script executable with `chmod +x invoices.sh`.
-3. From a command line terminal (eg Mac Terminal), tell `invoices.sh` where your database is by creating a configuration file `~/invoices.config` and using it to set the `csvfile` environmental variable. For instance, to use the database included in this repo, use `echo "export csvfile=~/myinvoices.csv" > ~/invoices.config`.  
+3. Copy the file `invoices.config` into your home directory and edit it to point to your invoices directory and database.  
 4. You should be able to execute the script with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.  
 5. Create a new invoices database with `invoices newfile`.  
 
