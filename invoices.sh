@@ -10,7 +10,7 @@
 # as the last argument on the command line, eg ./invoices.sh unpaid mysheet2.csv.
 # The `newfile` command creates a new database and saves its location in $CONFIG_FILE
 # If no location is given at the command line, the location in $CONFIG_FILE is used.
-DEFAULT_INVOICE_FILE=myinvoices.csv
+DEFAULT_INVOICE_FILENAME=myinvoices.csv
 CONFIG_FILE=~/invoices.config 
 
 colnames="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
@@ -216,7 +216,9 @@ function doDelete {
             awk -F, -v i="$inv_no" '{ if (NR==1 || $1 != i) print $0 }' > tmp && mv tmp $INVOICE_FILE
 
         cat $INVOICE_FILE | column -tx -s,
-        echo "Invoice deleted."
+        echo -e "\nInvoice deleted."
+    else
+        echo -e "\nDelete operation canceled."
     fi
 }
 
@@ -310,6 +312,8 @@ function doEdit {
             column -tx -s,
 
         echo -e "\nRecord updated."
+    else 
+        echo -e "\nEdit operation canceled."
     fi
 }
 
@@ -334,10 +338,10 @@ function doNewDb {
 
     newfile=$1
     if [[ -z "$newfile" ]]; then 
-        read -p "Filename [$DEFAULT_INVOICE_FILE]: " newfile
+        read -p "Filename [$DEFAULT_INVOICE_FILENAME]: " newfile
 
         if [[ "$newfile" == "" ]]; then   
-            newfile=$DEFAULT_INVOICE_FILE
+            newfile=$DEFAULT_INVOICE_FILENAME
         fi
     fi 
 
@@ -357,7 +361,7 @@ function doNewDb {
 
         doDefault $newfile 
     else 
-        echo "File creation cancelled."
+        echo "File creation canceled."
     fi 
 }
 
@@ -418,7 +422,9 @@ function doPay {
 
             showInvByNumber $inv_no
 
-            echo -e "Invoice paid.\n"
+            echo -e "\nInvoice paid.\n"
+        else 
+            echo -e "\nInvoice unchanged."
         fi
     fi 
 }
@@ -504,16 +510,15 @@ function doTaxes {
     echo -e "Invoices database: $INVOICE_FILE\n"
 
     # check to see if any invoices have been paid but not taxed
-    untaxed=$(cat $INVOICE_FILE | awk -F, '{ if ($7 == "NA" && $6 != "NA") print $0 }' | wc -l)
-    if [[ ! "$untaxed" -gt 0 ]]; then
-        echo "All paid invoices have been taxed."
+    untaxed=$(cat $INVOICE_FILE | awk -F, '{ if ($7 == "NA" && $6 != "NA") print $0 }')
+    if [ -z "$untaxed" ]; then
+        echo -e "\nAll paid invoices have been taxed."
     else 
-        cat $INVOICE_FILE | \
-            awk -F, '{ if (($7 == "NA" && $6 != "NA") || NR==1) print $0 }' | \
-            column -tx -s,
+        # print the untaxed records
+        echo -e "$colnames\n$untaxed" | column -tx -s,
 
-        taxable=$(cat $INVOICE_FILE | awk -F, '$7 == "NA" && $6 != "NA" { INC += $6; } END { print "Untaxed income: " INC }')
-        echo -e "\n$taxable"
+        # tally and print the total amount untaxed
+        echo -e "$untaxed" | cut -f6 -d, | awk '{ SUM += $1 } END { print "\nUntaxed income: " SUM }'
 
         local answer 
         read -p "Mark taxes paid for these invoices? [n]: " answer
@@ -525,9 +530,11 @@ function doTaxes {
 
             cat $INVOICE_FILE | \
                 awk -F, -v OFS="," -v t="$taxes" '{ if ($7=="NA" && $6 != "NA") { $7=t } print $0 }' > tmp && mv tmp $INVOICE_FILE
-            # cat $INVOICE_FILE | column -tx -s,
+
             doList
-            echo -e "Record updated.\n"
+            echo -e "\nRecord(s) updated.\n"
+        else   
+            echo -e "\nRecord(s) unchanged."
         fi
     fi     
 }
@@ -565,13 +572,15 @@ function main {
     if [ -e $CONFIG_FILE ]; then
         source $CONFIG_FILE
     else 
-        echo "Config file not found."
+        echo "~/$CONFIG_FILE file not found."
+        echo -e "Be sure to move \`invoices.config\` to your home directory" 
+        echo -e "and customize it to your directory structure."
         exit 1
     fi 
 
     if [[ -z $INVOICE_FILE || -z $INVOICE_DIR ]]; then
-        echo -e "Error: either INVOICE_FILE or INVOICE_DIR not set."
-        echo -e "Be sure to customize \`invoices.config\` and place in your home directory."
+        echo -e "Error: INVOICE_FILE and/or INVOICE_DIR not set."
+        echo -e "Check your \`~/invoices.config\` file."
         exit 1
     fi 
     INVOICE_FILE=$INVOICE_DIR/$INVOICE_FILE
