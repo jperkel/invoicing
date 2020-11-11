@@ -175,7 +175,7 @@ function doDefault {
     local answer
     # if [[ -e $configfile && ! $configfile == $csvfile ]]; then 
     if [ -e $configfile ]; then 
-        echo "Default invoices database: $(cat $configfile | sed 's/export csvfile=//')"
+        echo "Default invoices database: $(cat $configfile | grep csvfile | cut -f2 -d=)"
         read -p "Make $defaultfile default database instead [n]: " answer 
         if [[ "$answer" == "" ]]; then    
             answer="n"
