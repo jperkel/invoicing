@@ -13,7 +13,7 @@
 DEFAULT_INVOICE_FILENAME=myinvoices.csv
 CONFIG_FILE=~/invoices.config 
 
-colnames="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
+COL_NAMES="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
 
 # functions
 function usage() {
@@ -37,30 +37,37 @@ function usage() {
 
 }
 
-function backupCSV {
-    backup=$INVOICE_FILE".bak"
-    echo -e "\nBacking up database to: $backup\n"
-    cp $INVOICE_FILE $backup    
+# copy file to file.bak
+# input: $1: file to backup
+function backupFile {
+    if [ "$#" -eq 0 ]; then
+        echo "Error: No filename supplied."
+        exit 1
+    fi 
+
+    backup=$1".bak"
+    echo -e "\nBacking up $1 to: $backup\n"
+    cp $1 $backup    
 }
 
 # confirm invoice number is valid
 # input: $1: invoice number
 function validateInvNo {
     if [ "$#" -eq 0 ]; then
-        echo "No invoice number supplied."
+        echo "Error: No invoice number supplied."
         exit 1
     fi
 
     local inv_no=$1
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number: $inv_no"
+        echo "Error: Invalid invoice number: $inv_no"
         exit 1
     fi 
 
     # limit search to exact matches (ie, 'grep 4' should only return 4, not 14, 24, 40, ...)
     match=$(cat $INVOICE_FILE | sed "1d" | cut -f1 -d, | grep "^"$inv_no"$")
     if [ -z $match ]; then 
-        echo "Invoice not found: $inv_no"
+        echo "Error: Invoice not found: $inv_no"
         exit 1
     fi
 }
@@ -69,13 +76,13 @@ function validateInvNo {
 # input: $1: invoice number
 function showInvByNumber {
     if [ "$#" -eq 0 ]; then
-        echo "No invoice number supplied."
+        echo "Error: No invoice number supplied."
         exit 1
     fi
 
     local inv_no=$1
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number: $inv_no"
+        echo "Error: Invalid invoice number: $inv_no"
         exit 1
     fi 
 
@@ -100,13 +107,13 @@ function doAdd {
     fi
 
     if [[ ! "$inv_no" =~ ^[0-9]+$ ]]; then 
-        echo "Invalid invoice number."
+        echo "Error: Invalid invoice number."
         exit 1
     fi 
 
     match=$(cat $INVOICE_FILE | sed "1d" | cut -f1 -d, | grep $inv_no)
     if [ ! -z $match ]; then 
-        echo "Invoice number in use: $inv_no."
+        echo "Error: Invoice number in use: $inv_no."
         exit 1
     fi 
 
@@ -116,7 +123,7 @@ function doAdd {
     fi
 
     if [[ ! "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then 
-        echo "Invalid date."
+        echo "Error: Invalid date."
         exit 1
     fi
 
@@ -127,13 +134,13 @@ function doAdd {
     done 
 
     if [[ ! "$amt" =~ ^[0-9.]+$ ]]; then 
-        echo "Invalid amount."
+        echo "Error: Invalid amount."
         exit 1
     fi 
 
     data=$(echo "$inv_no,$d,$client,$amt,NA,NA,NA")
     echo "" # insert newline
-    printf "%s\n%s\n" $colnames $data | column -tx -s,
+    printf "%s\n%s\n" $COL_NAMES $data | column -tx -s,
 
     read -p "Write record to file [y]: " answer 
     if [[ "$answer" == "" ]]; then
@@ -142,7 +149,7 @@ function doAdd {
 
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
         # make a backup of the database...
-        backupCSV
+        backupFile $INVOICE_FILE
 
         echo "$inv_no,$d,$client,$amt,NA,NA,NA" >> $INVOICE_FILE
 
@@ -167,7 +174,7 @@ function doDefault {
     fi 
 
     if [ ! -e $INVOICE_DIR/$defaultfile ]; then 
-        echo "File not found: $INVOICE_DIR/$defaultfile"
+        echo "Error: File not found: $INVOICE_DIR/$defaultfile"
         echo -e "Use \`invoices newfile\` to create new invoice database."
         exit 1
     fi 
@@ -181,7 +188,8 @@ function doDefault {
         fi 
 
         if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-            cp $CONFIG_FILE $CONFIG_FILE".bak"
+            backupFile $CONFIG_FILE
+            # cp $CONFIG_FILE $CONFIG_FILE".bak"
             cat $CONFIG_FILE | sed -E "/INVOICE_FILE/ s/=[a-zA-Z0-9\/\.]+/=$defaultfile/" > tmp && mv tmp $CONFIG_FILE
 #            echo "export INVOICE_FILE=$defaultfile" > $CONFIG_FILE
         fi
@@ -210,7 +218,7 @@ function doDelete {
     read -p "Delete this invoice? [n]: " answer
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
         # make a backup of the database...
-        backupCSV
+        backupFile $INVOICE_FILE
 
         cat $INVOICE_FILE | \
             awk -F, -v i="$inv_no" '{ if (NR==1 || $1 != i) print $0 }' > tmp && mv tmp $INVOICE_FILE
@@ -280,27 +288,27 @@ function doEdit {
 
 
         if [[ ! "$amt_due" =~ ^[0-9.]+$ ]]; then 
-            echo "Invalid amount due."
+            echo "Error: Invalid amount due."
             exit 1
         fi 
 
         if [[ ! "$amt_pd" =~ ^[0-9.]+$ && "$amt_pd" != "NA" ]]; then 
-            echo "Invalid amount paid."
+            echo "Error: Invalid amount paid."
             exit 1
         fi 
 
         if [[ ! "$inv_dt" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then 
-            echo "Invalid invoice date."
+            echo "Error: Invalid invoice date."
             exit 1
         fi
 
         if [[ ! "$pd_dt" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ && "$pd_dt" != "NA" ]]; then 
-            echo "Invalid paid date."
+            echo "Error: Invalid paid date."
             exit 1
         fi
 
         # make a backup of the database...
-        backupCSV
+        backupFile $INVOICE_FILE
     
         s=$(echo "$inv_no,$inv_dt,$client,$amt_due,$pd_dt,$amt_pd,$taxes")
         cat $INVOICE_FILE | \
@@ -356,12 +364,12 @@ function doNewDb {
     fi
 
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-        echo $colnames > $INVOICE_DIR/$newfile 
+        echo $COL_NAMES > $INVOICE_DIR/$newfile 
         echo "File $INVOICE_DIR/$newfile created."
 
         doDefault $newfile 
     else 
-        echo "File creation canceled."
+        echo -e "\nFile creation canceled."
     fi 
 }
 
@@ -405,17 +413,17 @@ function doPay {
             fi 
 
             if [[ ! "$amt" =~ ^[0-9.]+$ ]]; then 
-                echo "Invalid payment amount."
+                echo "Error: Invalid payment amount."
                 exit 1
             fi 
 
             if [[ ! "$d" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then 
-                echo "Invalid payment date."
+                echo "Error: Invalid payment date."
                 exit 1
             fi
 
             # make a backup of the database...
-            backupCSV
+            backupFile $INVOICE_FILE
 
             cat $INVOICE_FILE | \
                 awk -F, -v OFS="," -v i="$inv_no" -v a="$amt" -v d="$d" '{ if ($1==i) { $6=a; $5=d } print $0 }' > tmp && mv tmp $INVOICE_FILE
@@ -515,7 +523,7 @@ function doTaxes {
         echo -e "\nAll paid invoices have been taxed."
     else 
         # print the untaxed records
-        echo -e "$colnames\n$untaxed" | column -tx -s,
+        echo -e "$COL_NAMES\n$untaxed" | column -tx -s,
 
         # tally and print the total amount untaxed
         echo -e "$untaxed" | cut -f6 -d, | awk '{ SUM += $1 } END { print "\nUntaxed income: " SUM }'
@@ -524,7 +532,7 @@ function doTaxes {
         read -p "Mark taxes paid for these invoices? [n]: " answer
         if [[ "$answer" == "y" || "$answer" == "Y" ]]; then 
             # make a backup of the database...
-            backupCSV
+            backupFile $INVOICE_FILE
 
             read -p "Value for taxes field: " taxes
 
@@ -612,7 +620,7 @@ function main {
 
     # there should be at least one argument provided
     if [ "$#" -eq 0 ]; then
-        echo -e "Error: Command required.\n"
+        echo -e "\nError: Command required.\n"
         usage
         exit 1
     fi 
