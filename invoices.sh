@@ -317,11 +317,15 @@ function doList {
     echo "List invoices"
     echo -e "Invoices database: $csvfile\n"
 
-    cat $csvfile | \
-        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
-            NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) } else { $8="--" }; print $0 }' | \
-            column -tx -s,
-
+    # anything to print?
+    if [[ $(cat $csvfile | wc -l) -gt 1 ]]; then
+        cat $csvfile | \
+            awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } \
+                NR>1 { if ($6 < $4 || $6 == "NA") { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; $8=int((today-inv_dt)/86400) } else { $8="--" }; print $0 }' | \
+                column -tx -s,
+    else    
+        echo "No invoices to list."
+    fi 
 }
 
 # input: $1 (optional): filename
@@ -538,14 +542,21 @@ function doUnpaid {
 #        awk -F, -v OFS="," 'NR==1 { $(NF+1)="bal_due"; print $0 } NR>1 { if ($6 != $4) print $0,$4-$6 }' | \
 #        column -tx -s,
 
-    # this version of the code calculates the number of days an invoice is past-due.
-    cat $csvfile | \
-        awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } NR>1 { if (($6 < $4) || ($6 == "NA")) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,int ((today-inv_dt)/86400) } }' | \
-        column -tx -s,
+    # count unpaid invoices
+    unpaid=$(cat $csvfile | awk -F, 'NR>1 { if (($6 < $4) || ($6 == "NA")) { print $0 } }' | wc -l )
 
-    echo -e "\n\tUnpaid summary:"
-    cat $csvfile | \
-        awk -F, '{ a[$3] += $4-$6; DUE+=$4-$6; } END { for (i in a) if (a[i] != 0) print "\t"i": $"a[i]; print "\n\tTotal due: $"DUE,"\n" }'
+    if [ $unpaid -gt 0 ]; then 
+    # this version of the code calculates the number of days an invoice is past-due.
+        cat $csvfile | \
+            awk -F, -v OFS="," -v today="$(date +%s)" 'NR==1 { $(NF+1)="days_past_due"; print $0; } NR>1 { if (($6 < $4) || ($6 == "NA")) { "date -j -f %Y-%m-%d " $2 " +%s" | getline inv_dt; print $0,int ((today-inv_dt)/86400) } }' | \
+            column -tx -s,
+
+        echo -e "\n\tUnpaid summary:"
+        cat $csvfile | \
+            awk -F, '{ a[$3] += $4-$6; DUE+=$4-$6; } END { for (i in a) if (a[i] != 0) print "\t"i": $"a[i]; print "\n\tTotal due: $"DUE,"\n" }'
+    else    
+        echo "No unpaid invoices found."
+    fi    
 }
 
 function main {
