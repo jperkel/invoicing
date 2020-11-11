@@ -17,12 +17,12 @@ colnames="inv_no,inv_date,clientID,amt_billed,paid_date,amt_paid,taxes"
 
 # functions
 function usage() {
-	echo -e "INVOICES.SH: Script to handle freelance invoices"
-    echo -e "USAGE: $0 [COMMAND] <optional-params>"
+    echo -e "INVOICES.SH: Script to handle freelance invoices"
+    echo -e "USAGE: $(basename $0) [COMMAND] <optional-params>"
     echo -e "\tCOMMANDS:"
     echo -e "\t\tadd\tAdd invoice"
     echo -e "\t\tclients\tList clientIDs"
-    echo -e "\t\tdefault\tSet default invoice database <optional: invoice #>"
+    echo -e "\t\tdefault\tSet default invoice database <optional: filename>"
     echo -e "\t\tdelete\tDelete invoice <optional: invoice #>"
     echo -e "\t\tedit\tEdit invoice <optional: invoice #>"
     echo -e "\t\thelp\tDisplay help"
@@ -161,31 +161,32 @@ function doClients {
 
 # input: $1 (optional): filename
 function doDefault {
-    csvfile=$1
-    if [[ "$csvfile" == "" ]]; then 
-        read -p "Filename: " csvfile
+    defaultfile=$1
+    if [ -z "$defaultfile" ]; then 
+        read -p "Filename: " defaultfile
     fi 
 
-    if [ ! -e $csvfile ]; then 
-        echo "File not found: $csvfile"
-        echo -e "Use \`invoices init\` to create new invoice database."
+    if [ ! -e $defaultfile ]; then 
+        echo "File not found: $defaultfile"
+        echo -e "Use \`invoices newfile\` to create new invoice database."
         exit 1
     fi 
 
     local answer
-    if [[ -e $configfile && ! $configfile == $csvfile ]]; then 
-        echo "Default invoices database: $(cat $configfile)"
-        read -p "Make $csvfile default database instead [n]: " answer 
+    # if [[ -e $configfile && ! $configfile == $csvfile ]]; then 
+    if [ -e $configfile ]; then 
+        echo "Default invoices database: $(cat $configfile | sed 's/export csvfile=//')"
+        read -p "Make $defaultfile default database instead [n]: " answer 
         if [[ "$answer" == "" ]]; then    
             answer="n"
         fi 
 
         if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
             cp $configfile $configfile".bak"
-            echo $csvfile > $configfile
+            echo "export csvfile=$defaultfile" > $configfile
         fi
     else 
-        echo $csvfile > $configfile 
+        echo "export csvfile=$defaultfile" > $configfile 
     fi
 
 }
@@ -327,18 +328,18 @@ function doList {
 function doNewDb {
     echo "Create new invoice database"
 
-    csvfile=$1
-    if [[ "$csvfile" == "" ]]; then 
-        read -p "Filename [$default_csvfile]: " csvfile
+    newcsvfile=$1
+    if [[ -z "$newcsvfile" ]]; then 
+        read -p "Filename [$default_csvfile]: " newcsvfile
 
-        if [[ "$csvfile" == "" ]]; then   
-            csvfile=$default_csvfile
+        if [[ "$newcsvfile" == "" ]]; then   
+            newcsvfile=$default_csvfile
         fi
     fi 
 
     local answer="y"
-    if [ -e $csvfile ]; then
-        read -p "File $csvfile already exists. Do you want to overwrite it [n]: " answer
+    if [ -e $newcsvfile ]; then
+        read -p "File $newcsvfile already exists. Do you want to overwrite it [n]: " answer
     fi 
 
     if [[ "$answer" == "" ]]; then  
@@ -346,10 +347,12 @@ function doNewDb {
     fi
 
     if [[ "$answer" == "y" || "$answer" == "Y" ]]; then
-        echo $colnames > $csvfile 
-        echo "File $csvfile created."
+        # touch $newcsvfile
+        echo $colnames > $newcsvfile 
+        echo "File $newcsvfile created."
+        echo "Use \`INVFILE=$newcsvfile\` to make this the default database."
 
-        doDefault $csvfile 
+        # doDefault $csvfile 
     else 
         echo "File creation cancelled."
     fi 
@@ -548,9 +551,9 @@ function doUnpaid {
 function main {
     local answer
 
-    # if there is a configfile, read it to find location of invoices database
+    # if there is a configfile, read it to find location of invoices database; this should set $csvfile
     if [ -e $configfile ]; then
-        csvfile=$(head -n 1 $configfile)
+        source $configfile
     fi 
 
     # if the last cmdline argument is a csv file, use that as the database instead
@@ -565,7 +568,9 @@ function main {
 
     # if $csvfile is not set, no database has been found
     if [ -z $csvfile ]; then
-        echo -e "\nError: No invoices database found. Use \`invoices newfile\` to create one.\n"
+        echo -e "Error: No invoices database found." 
+        echo -e "Create new database with \`invoices newfile\`."
+        echo -e "Set default database with \`echo \"export csvfile=<filename>\" > $configfile\`.\n"
         usage 
         exit 1
     fi 

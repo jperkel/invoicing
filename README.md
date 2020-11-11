@@ -9,7 +9,7 @@ This script creates and manages a comma-separated values (CSV)-based invoice spr
 - Amount paid 
 - Taxes (eg: "PAID", or "Q2/20" or whatever you find useful)
 
-By default the spreadsheet is located in `~/mysheet.csv`, but you can modify that on line 10. An example spreadsheet is included in the repository. Alternatively, supply the spreadsheet location as the last command-line argument. For instance: `invoices report CLIENT_A mysheet2.csv`.
+By default the spreadsheet is located in `~/myinvoices.csv`, but you can modify that on line 10. An example spreadsheet is included in the repository. Alternatively, supply the spreadsheet location as the last command-line argument. For instance: `invoices report CLIENT_A mysheet2.csv`.
 
 The script supports the following commands: 
 - `add`: Add invoice
@@ -76,8 +76,9 @@ inv_no  inv_date    clientID  amt_billed  paid_date   amt_paid  taxes_pd  past_d
 # Installation
 1. Install the script (`invoices.sh`) somewhere in your home directory. 
 2. Make the script executable with `chmod +x invoices.sh`.
-3. From a command line terminal (eg Mac Terminal) you should be able to execute it with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.
-4. Create a new invoices database with `invoices newfile`. 
+3. From a command line terminal (eg Mac Terminal), tell `invoices.sh` where your database is by creating a configuration file `~/invoices.config` and using it to set the `csvfile` environmental variable. For instance, to use the database included in this repo, use `echo "export csvfile=~/myinvoices.csv" > ~/invoices.config`.  
+4. You should be able to execute the script with `path/to/invoices.sh [COMMAND]`. For simplicity, add an alias to your bash configuration file, eg: `alias invoices=~/Scripts/invoices.sh`. Once you reload your configuration file (e.g., `source .bash_profile`), you will be able to invoke the script directly, eg: `invoices clients`.  
+5. Create a new invoices database with `invoices newfile`.  
 
 # License
 (from https://opensource.org/licenses/BSD-3-Clause) 
